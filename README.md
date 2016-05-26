@@ -16,11 +16,11 @@ Dotbro takes on the routine. The main task - installing your dotfiles in one com
 
 # Features
 
-## Simple configuration file
+#### Simple configuration file
 
 All you need is simple [configuration file](#configuration) in JSON or TOML format.
 
-## Clear mapping
+#### Clear mapping
 
 You may want to (or you do already) store your dotfiles in a neat way using named directories like `bash/bashrc`.
 Obviously, you want to symlink it to proper place `$HOME/.bashrc`.
@@ -29,12 +29,12 @@ This is easily done by writing such string in `[mapping]` section:
 "bash/bashrc" = ".bashrc"
 ```
 
-## Specify the configuration file only once
+#### Specify the configuration file only once
 
 First time you run dotbro, specify the config file.
 Dotbro remembers path to this file and use it in further runs.
 
-## Cleans dead symlinks
+#### Cleans dead symlinks
 
 Dotbro cleans broken symlinks in your `$HOME` (or your another destination path).
 
@@ -91,14 +91,14 @@ backup = "$HOME/.dotfiles~"
 
 See more examples in [config_examples](https://github.com/hypnoglow/dotbro/tree/master/config_examples) directory of this repo.
 
-## Options
+### Options
 
 Config has 3 sections:
 - directories
 - mapping
 - files
 
-### Directories
+#### Directories
 
 Option | Description | Example | Default
 --- | --- | --- | ---
@@ -107,7 +107,7 @@ sources | Directory relative to `dotfiles` where dotfiles are stored. You want t
 destination | Your dotfiles will be linked there. | `$HOME` | `$HOME`
 backup | Your original files will be backuped there. | `$HOME/backups/dotfiles` | `$HOME/.dotfiles~`
 
-### Mapping
+#### Mapping
 
 Each option here represents source file and destination file.  
 Example: your dotfiles directory is `$HOME/dotfiles`. In that directory, you have folder `vim` and file `vimrc` in that folder, so path is `$HOME/dotfiles/vim/vimrc`.
@@ -118,7 +118,7 @@ In `directories` section you have already specified `dotfiles = "$HOME/dotfiles"
 
 Also, mapping is optional. If you do not specify any mapping, `dotbro` will symlink all files from your dotfiles directory to your destination directory respectively. If you do want this approach, but want some files to be excluded, see [Files](#files) section.
 
-### Files
+#### Files
 
 As said above, this section is for symlinking all dotfiles without mapping specification.
 
@@ -144,14 +144,14 @@ excludes = [
 
 # Install dotbro
 
-## Using [Go](https://golang.org/doc/install) tools:
+### Using [Go](https://golang.org/doc/install) tools:
 
     go get github.com/hypnoglow/dotbro
 
 This downloads the source code, builds and installs the latest version of dotbro.
 Then you can use `dotbro` command right away.
 
-## Precompiled binary
+### Precompiled binary
 
 Coming soon ...
 
