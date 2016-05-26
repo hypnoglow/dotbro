@@ -1,0 +1,57 @@
+# Dotbro configuration file.
+#
+# Some points:
+# - Almost all options have default value.
+# - You can use $ENV_VARIABLE in paths.
+
+[directories]
+
+# Directory of your dotfiles repository.
+# Default: directory of this config.
+dotfiles = "$HOME/dotfiles"
+
+# Destination directory - your dotfiles will be linked there.
+# Default: $HOME
+destination = "$HOME"
+
+# Backup directory - your original files will be backuped there.
+# Default: $HOME/.dotfiles~
+backup = "$HOME/.dotfiles~"
+
+[mapping]
+
+# Binaries
+"bin" = "bin"
+
+# ZSH
+"zsh/zprofile" = ".zprofile"
+"zsh/zshrc" = ".zshrc"
+"zsh/zshrc.d" = ".zshrc.d"
+"zsh/zlogin" = ".zlogin"
+
+# Atom
+"atom/config.cson" = ".atom/config.cson"
+"atom/init.coffee" = ".atom/init.coffee"
+"atom/keymap.cson" = ".atom/keymap.cson"
+"atom/snippets.cson" = ".atom/snippets.cson"
+"atom/styles.less" = ".atom/styles.less"
+"atom/packages.list" = ".atom/packages.list"
+
+# Vim
+"vim/vimrc" = ".vimrc"
+
+#
+# Other
+#
+
+".xprofile" = ".xprofile"
+".Xresources" = ".Xresources"
+".Xresources.d" = ".Xresources.d"
+
+"git/commit_template" = ".gitcommit"
+"git/config" = ".gitconfig"
+"git/excludes" = ".gitexcludes"
+
+"i3" = ".i3"
+".keynavrc" = ".keynavrc"
+".screenrc" = ".screenrc"

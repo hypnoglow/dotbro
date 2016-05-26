@@ -1,0 +1,16 @@
+{
+    "directories": {
+        "dotfiles": "$DOTFILES_ROOT",
+        "destination": "$HOME",
+        "backup": "$HOME/.dotfiles~"
+    },
+    "mapping": {
+        ".vimrc": ".vimrc",
+        "bin": "bin",
+        "zsh/zprofile": ".zprofile",
+        "zsh/zshrc": ".zshrc",
+        "zsh/zshrc.d": ".zshrc.d",
+        "zsh/zlogin": ".zlogin",
+        "vim/vimrc": ".vimrc"
+    }
+}

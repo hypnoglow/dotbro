@@ -1,0 +1,13 @@
+{
+    "directories": {
+        "dotfiles": "$DOTFILES_ROOT",
+        "destination": "$HOME",
+        "backup": "$HOME/.dotfiles~"
+    },
+    "files": {
+        "excludes": [
+            "README.md",
+            "dotbro.conf"
+        ]
+    }
+}

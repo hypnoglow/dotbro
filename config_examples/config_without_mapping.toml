@@ -1,0 +1,27 @@
+# Dotbro configuration file.
+#
+# Some points:
+# - Almost all options have default value.
+# - You can use $ENV_VARIABLE in paths.
+
+[directories]
+
+# Directory of your dotfiles repository.
+# Default: directory of this config.
+dotfiles = "$HOME/dotfiles"
+
+# Destination directory - your dotfiles will be linked there.
+# Default: $HOME
+destination = "$HOME"
+
+# Backup directory - your original files will be backuped there.
+# Default: $HOME/.dotfiles~
+backup = "$HOME/.dotfiles~"
+
+[files]
+
+# Files to exclude from being installed
+excludes = [
+    "README.md",
+    "dotbro.conf"
+]
