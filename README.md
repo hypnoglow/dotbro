@@ -1,5 +1,7 @@
 # dotbro - simple yet effective dotfiles manager.
 
+[![Build Status](https://travis-ci.org/hypnoglow/dotbro.svg?branch=master)](https://travis-ci.org/hypnoglow/dotbro)
+
 Dotbro is a tool which helps you install and keep your dotfiles up to date.
 
 If you don't have your dotfiles repository yet, it's time to [create it](https://medium.com/@webprolific/getting-started-with-dotfiles-43c3602fd789#.h8k6sagzb).
