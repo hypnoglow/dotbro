@@ -88,6 +88,14 @@ func main() {
 
 	srcDirAbs := config.Directories.Dotfiles
 	if config.Directories.Sources != "" {
+		if _, err = os.Stat(config.Directories.Sources); os.IsNotExist(err) {
+			outError("Sources directory `%s' does not exist.", config.Directories.Sources)
+			exit(1)
+		}
+		if err != nil {
+			outError("Error reading sources directory `%s': %s", config.Directories.Sources, err)
+			exit(1)
+		}
 		srcDirAbs += "/" + config.Directories.Sources
 	}
 
