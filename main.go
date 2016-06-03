@@ -11,6 +11,8 @@ var isQuiet bool
 func main() {
 	logger.msg("Start.")
 
+	checkVersion()
+
 	// Parse arguments
 
 	args, err := parseArguments()
