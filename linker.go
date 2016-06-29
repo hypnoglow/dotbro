@@ -55,7 +55,7 @@ func backup(dest string, destAbs string, backupDir string) error {
 	// todo: if dry-run, just print
 
 	dir := path.Dir(backupDir + "/" + dest)
-	err := os.MkdirAll(dir, 644)
+	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func setSymlink(srcAbs string, destAbs string) error {
 	// todo: if dry-run, just print
 
 	dir := path.Dir(destAbs)
-	err = os.MkdirAll(dir, 644)
+	err = os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
