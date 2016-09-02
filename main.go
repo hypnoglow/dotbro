@@ -23,46 +23,13 @@ func main() {
 
 	isVerbose = args["--verbose"].(bool)
 	isQuiet = args["--quiet"].(bool)
-
-	var configPath string
-	if args["--config"] == nil {
-		configPath = ""
-	} else {
-		configPath = args["--config"].(string)
-	}
-
-	// Process arguments
-	var rc RC
-	if configPath == "" {
-		rc, err = readRC()
-		if err != nil {
-			outError("Error reading rc file: %s", err)
-			exit(1)
-		}
-		if rc.Config.Path == "" {
-			outError("Config file not specified.")
-			exit(1)
-		}
-	} else {
-		// Save to RC file
-		configPath, err = filepath.Abs(configPath)
-		if err != nil {
-			outError("Bad config path: %s", err)
-			exit(1)
-		}
-
-		rc, err = saveRC(configPath)
-		if err != nil {
-			outError("Cannot save rc file: %s", err)
-			exit(1)
-		}
-	}
+	configPath := getConfigPath(args)
 
 	// Process config
 
-	config, err := configurationFromFile(rc.Config.Path)
+	config, err := configurationFromFile(configPath)
 	if err != nil {
-		outError("Error reading configuration from file %s: %s", rc.Config.Path, err)
+		outError("Error reading configuration from file %s: %s", configPath, err)
 		exit(1)
 	}
 
@@ -99,6 +66,57 @@ func main() {
 		srcDirAbs += "/" + config.Directories.Sources
 	}
 
+	mapping := getMapping(config, srcDirAbs)
+
+	outInfo("Installing dotfiles...")
+	for src, dest := range mapping {
+		installDotfile(src, dest, config, srcDirAbs)
+	}
+
+	outInfo("All done (─‿‿─)")
+	exit(0)
+}
+
+func getConfigPath(args map[string]interface{}) string {
+	var configPath string
+	if args["--config"] == nil {
+		configPath = ""
+	} else {
+		configPath = args["--config"].(string)
+	}
+
+	var rc RC
+	var err error
+
+	if configPath == "" {
+		rc, err = readRC()
+		if err != nil {
+			outError("Error reading rc file: %s", err)
+			exit(1)
+		}
+		if rc.Config.Path == "" {
+			outError("Config file not specified.")
+			exit(1)
+		}
+	} else {
+		// Save to RC file
+		configPath, err = filepath.Abs(configPath)
+		if err != nil {
+			outError("Bad config path: %s", err)
+			exit(1)
+		}
+
+		rc, err = saveRC(configPath)
+		if err != nil {
+			outError("Cannot save rc file: %s", err)
+			exit(1)
+		}
+	}
+
+	return rc.Config.Path
+}
+
+func getMapping(config Configuration, srcDirAbs string) map[string]string {
 	mapping := make(map[string]string)
 
 	if len(config.Mapping) == 0 {
@@ -137,47 +155,45 @@ func main() {
 		mapping = config.Mapping
 	}
 
-	outInfo("Installing dotfiles...")
-	for src, dest := range mapping {
-		srcAbs := srcDirAbs + "/" + src
-		destAbs := config.Directories.Destination + "/" + dest
+	return mapping
+}
 
-		exists, err := isExists(srcAbs)
-		if !exists {
-			outWarn("Source file %s does not exist", srcAbs)
-			continue
-		}
+func installDotfile(src string, dest string, config Configuration, srcDirAbs string) {
+	srcAbs := srcDirAbs + "/" + src
+	destAbs := config.Directories.Destination + "/" + dest
 
+	exists, err := isExists(srcAbs)
+	if !exists {
+		outWarn("Source file %s does not exist", srcAbs)
+		return
+	}
+
+	if err != nil {
+		outError("Error processing source file %s: %s", src, err)
+		exit(1)
+	}
+
+	needSymlink, needBackup, err := processDest(srcAbs, destAbs)
+	if err != nil {
+		outError("Error processing destination file %s: %s", destAbs, err)
+		exit(1)
+	}
+
+	if !needSymlink {
+		return
+	}
+
+	if needBackup {
+		err = backup(dest, destAbs, config.Directories.Backup)
 		if err != nil {
-			outError("Error processing source file %s: %s", src, err)
-			exit(1)
-		}
-
-		needSymlink, needBackup, err := processDest(srcAbs, destAbs)
-		if err != nil {
-			outError("Error processing destination file %s: %s", destAbs, err)
-			exit(1)
-		}
-
-		if !needSymlink {
-			continue
-		}
-
-		if needBackup {
-			err = backup(dest, destAbs, config.Directories.Backup)
-			if err != nil {
-				outError("Error backuping file %s: %s", destAbs, err)
-				exit(1)
-			}
-		}
-
-		err = setSymlink(srcAbs, destAbs)
-		if err != nil {
-			outError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
+			outError("Error backuping file %s: %s", destAbs, err)
 			exit(1)
 		}
 	}
 
-	outInfo("All done (─‿‿─)")
-	exit(0)
+	err = setSymlink(srcAbs, destAbs)
+	if err != nil {
+		outError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
+		exit(1)
+	}
 }
