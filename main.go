@@ -29,7 +29,7 @@ func main() {
 
 	// Process config
 
-	config, err := configurationFromFile(configPath)
+	config, err := NewConfiguration(configPath)
 	if err != nil {
 		outError("Error reading configuration from file %s: %s", configPath, err)
 		exit(1)
@@ -175,7 +175,7 @@ func getConfigPath(args map[string]interface{}) string {
 	return rc.Config.Path
 }
 
-func getMapping(config Configuration, srcDirAbs string) map[string]string {
+func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 	mapping := make(map[string]string)
 
 	if len(config.Mapping) == 0 {
@@ -217,7 +217,7 @@ func getMapping(config Configuration, srcDirAbs string) map[string]string {
 	return mapping
 }
 
-func installDotfile(src string, dest string, config Configuration, srcDirAbs string) {
+func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
