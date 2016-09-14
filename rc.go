@@ -6,7 +6,8 @@ import (
 	"os"
 )
 
-const rcFilepath = "${HOME}/.dotbro/profile.json"
+// RCFilepath is path to dotbro's runcom file.
+const RCFilepath = "${HOME}/.dotbro/profile.json"
 
 // RC represents data for dotbro's runcom file.
 type RC struct {
@@ -18,41 +19,41 @@ type rcConfig struct {
 	Path string `json:"path"`
 }
 
-// readRC reads RC from rcFilepath and returns it.
-func readRC() (rc RC, err error) {
-	rcFile := os.ExpandEnv(rcFilepath)
+// NewRC returns a new RC.
+func NewRC() *RC {
+	return &RC{}
+}
+
+// Load reads RC data from rcFilepath.
+func (rc *RC) Load() (err error) {
+	rcFile := os.ExpandEnv(RCFilepath)
 
 	bytes, err := ioutil.ReadFile(rcFile)
 	if os.IsNotExist(err) {
-		return rc, nil
+		return nil
 	} else if err != nil {
-		return rc, err
+		return err
 	}
 
 	err = json.Unmarshal(bytes, &rc)
-	return rc, err
+	return err
 }
 
-// saveRC creates RC, saves it to rcFilepath and returns it.
-func saveRC(configPath string) (rc RC, err error) {
-	rcFile := os.ExpandEnv(rcFilepath)
+// Save saves RC data to rcFilepath.
+func (rc *RC) Save(configPath string) (err error) {
+	rcFile := os.ExpandEnv(RCFilepath)
 
-	err = createPath(rcFile)
-	if err != nil {
-		return rc, err
+	if err = createPath(rcFile); err != nil {
+		return err
 	}
 
-	rc = RC{
-		Config: rcConfig{
-			Path: configPath,
-		},
-	}
+	rc.Config.Path = configPath
 
 	bytes, err := json.MarshalIndent(rc, "", "    ")
 	if err != nil {
-		return rc, err
+		return err
 	}
 
-	ioutil.WriteFile(rcFile, bytes, 0666)
-	return rc, err
+	err = ioutil.WriteFile(rcFile, bytes, 0666)
+	return err
 }

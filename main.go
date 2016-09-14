@@ -25,7 +25,7 @@ func main() {
 
 	isVerbose = args["--verbose"].(bool)
 	isQuiet = args["--quiet"].(bool)
-	configPath := getConfigPath(args)
+	configPath := getConfigPath(args["--config"])
 
 	// Process config
 
@@ -136,42 +136,44 @@ func addAction(filename string, config Configuration) error {
 	return nil
 }
 
-func getConfigPath(args map[string]interface{}) string {
+func getConfigPath(configArg interface{}) string {
 	var configPath string
-	if args["--config"] == nil {
-		configPath = ""
-	} else {
-		configPath = args["--config"].(string)
+	if configArg != nil {
+		configPath = configArg.(string)
 	}
 
-	var rc RC
+	rc := NewRC()
 	var err error
 
+	// If config param is not passed to dotbro, read it from RC file.
 	if configPath == "" {
-		rc, err = readRC()
-		if err != nil {
+		if err = rc.Load(); err != nil {
 			outError("Error reading rc file: %s", err)
 			exit(1)
 		}
+
 		if rc.Config.Path == "" {
 			outError("Config file not specified.")
 			exit(1)
 		}
-	} else {
-		// Save to RC file
-		configPath, err = filepath.Abs(configPath)
-		if err != nil {
-			outError("Bad config path: %s", err)
-			exit(1)
-		}
 
-		rc, err = saveRC(configPath)
-		if err != nil {
-			outError("Cannot save rc file: %s", err)
-			exit(1)
-		}
+		outVerbose("Got config path from file `%s`", RCFilepath)
+		return rc.Config.Path
 	}
 
+	// Save to RC file
+	configPath, err = filepath.Abs(configPath)
+	if err != nil {
+		outError("Bad config path: %s", err)
+		exit(1)
+	}
+
+	if err = rc.Save(configPath); err != nil {
+		outError("Cannot save rc file: %s", err)
+		exit(1)
+	}
+
+	outVerbose("Saved config path to file `%s`", RCFilepath)
 	return rc.Config.Path
 }
 
