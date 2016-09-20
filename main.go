@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -18,6 +20,9 @@ func main() {
 		outError("Error parsing aruments: %s", err)
 		exit(1)
 	}
+
+	// DEBUG
+	fmt.Println(args)
 
 	logger.msg("Arguments passed: %+v", args)
 
@@ -47,6 +52,22 @@ func main() {
 		outVerbose("Destination dir: %s", config.Directories.Destination)
 	}
 
+	// Select action
+
+	switch {
+	case args["add"] == true:
+		filename := args["<filename>"].(string)
+		if err = addAction(filename, config); err != nil {
+			outError("%s", err)
+			exit(1)
+		}
+
+		outInfo("`%s` was successfully added to your dotfiles!", filename)
+		exit(0)
+	}
+
+	// Default action: install
+
 	err = cleanDeadSymlinks(config.Directories.Destination)
 	if err != nil {
 		outError("Error cleaning dead symlinks: %s", err)
@@ -75,6 +96,47 @@ func main() {
 
 	outInfo("All done (─‿‿─)")
 	exit(0)
+}
+
+func addAction(filename string, config Configuration) error {
+	fileInfo, err := os.Lstat(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s: no such file or directory", filename)
+		}
+		return err
+	}
+
+	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
+		return fmt.Errorf("Cannot add file %s - it is a symlink", filename)
+	}
+
+	if fileInfo.Mode().IsDir() {
+		return fmt.Errorf("Cannot add dir %s - directories are not supported yet.", filename)
+	}
+
+	outVerbose("Adding file `%s` to dotfiles root `%s`", filename, config.Directories.Dotfiles)
+
+	// backup file
+	err = backupCopy(filename, config.Directories.Backup)
+	if err != nil {
+		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
+	}
+
+	// move file to dotfiles root
+	newPath := config.Directories.Dotfiles + "/" + path.Base(filename)
+	if err = os.Rename(filename, newPath); err != nil {
+		return err
+	}
+
+	// Add a symlink to the moved file
+	if err = setSymlink(newPath, filename); err != nil {
+		return err
+	}
+
+	// TODO: write to config file
+
+	return nil
 }
 
 func getConfigPath(args map[string]interface{}) string {
