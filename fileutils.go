@@ -9,7 +9,7 @@ import (
 
 // Copy copies a file from src to dst.
 func Copy(src, dst string) error {
-	sfi, err := os.Stat(src)
+	sfi, err := os.Lstat(src)
 	if err != nil {
 		return err
 	}
