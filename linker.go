@@ -84,7 +84,7 @@ func backupCopy(filename, backupDir string) error {
 
 	outVerbose("  → backup %s to %s", abs, backupPath)
 
-	err = copy(filename, backupPath)
+	err = Copy(filename, backupPath)
 	return err
 }
 

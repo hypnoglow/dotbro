@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 )
 
-// copy copies a file from src to dst.
-func copy(src, dst string) error {
+// Copy copies a file from src to dst.
+func Copy(src, dst string) error {
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return err
@@ -45,6 +46,11 @@ func copyFileContents(src, dst string) (err error) {
 	}
 
 	defer in.Close()
+
+	err = os.MkdirAll(path.Dir(dst), 0755)
+	if err != nil {
+		return err
+	}
 
 	out, err := os.Create(dst)
 	if err != nil {
