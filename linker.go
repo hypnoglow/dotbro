@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path"
+	"path/filepath"
 )
 
 // processDest inspects destination path, and reports whether symlink and backup
@@ -63,6 +64,27 @@ func backup(dest string, destAbs string, backupDir string) error {
 	backupPath := backupDir + "/" + dest
 	outVerbose("  → backup %s to %s", destAbs, backupPath)
 	err = os.Rename(destAbs, backupPath)
+	return err
+}
+
+func backupCopy(filename, backupDir string) error {
+	rel := path.Base(filename)
+	abs, err := filepath.Abs(filename)
+	if err != nil {
+		return err
+	}
+
+	backupPath := backupDir + "/" + rel
+
+	// Create subdirectories, if need
+	dir := path.Dir(backupPath)
+	if err = os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	outVerbose("  → backup %s to %s", abs, backupPath)
+
+	err = Copy(filename, backupPath)
 	return err
 }
 
