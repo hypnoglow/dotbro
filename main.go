@@ -21,9 +21,6 @@ func main() {
 		exit(1)
 	}
 
-	// DEBUG
-	fmt.Println(args)
-
 	logger.msg("Arguments passed: %+v", args)
 
 	isVerbose = args["--verbose"].(bool)

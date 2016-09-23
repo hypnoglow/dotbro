@@ -43,7 +43,7 @@ Dotbro cleans broken symlinks in your `$HOME` (or your another destination path)
 
 Dotbro can automate routine of adding files to your dotfiles repo with one single
 command. It does a backup copy, moves the file and creates a symlink to your file.
-After that you only need to commit that file to your repo.
+After that you only need to add this file to your dotbro config (*I'm working on automation of this*) and commit that file to your repo.
 
 # Configuration
 
