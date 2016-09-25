@@ -224,14 +224,14 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 	destAbs := config.Directories.Destination + "/" + dest
 
 	exists, err := isExists(srcAbs)
-	if !exists {
-		outWarn("Source file %s does not exist", srcAbs)
-		return
-	}
-
 	if err != nil {
 		outError("Error processing source file %s: %s", src, err)
 		exit(1)
+	}
+
+	if !exists {
+		outWarn("Source file %s does not exist", srcAbs)
+		return
 	}
 
 	needSymlink, needBackup, err := processDest(srcAbs, destAbs)
