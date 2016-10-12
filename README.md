@@ -158,6 +158,12 @@ excludes = [
 This downloads the source code, builds and installs the latest version of dotbro.
 Then you can use `dotbro` command right away.
 
+### Arch Linux
+
+`dotbro` package is available in AUR:
+
+https://aur.archlinux.org/packages/dotbro/
+
 ### Precompiled binary
 
 Coming soon ...
