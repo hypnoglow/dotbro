@@ -6,49 +6,57 @@ import (
 	"path/filepath"
 )
 
-// processDest inspects destination path, and reports whether symlink and backup
-// are needed.
-func processDest(srcAbs string, destAbs string) (bool, bool, error) {
-	var err error
-	var needSymlink = false
-	var needBackup = false
-
-	fileInfo, err := os.Lstat(destAbs)
+// needSymlink reports whether source file needs to be symlinked to destination path.
+func needSymlink(src, dest string) (bool, error) {
+	fi, err := os.Lstat(dest)
 	if os.IsNotExist(err) {
-		needSymlink = true
-		return needSymlink, needBackup, nil
+		return true, nil
 	}
-
 	if err != nil {
-		return needSymlink, needBackup, err
+		return false, err
 	}
 
-	if fileInfo.Mode()&os.ModeSymlink != os.ModeSymlink {
-		needSymlink = true
-		needBackup = true
-		return needSymlink, needBackup, nil
+	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		return true, nil
 	}
 
-	target, err := os.Readlink(destAbs)
+	target, err := os.Readlink(dest)
 	if err != nil {
-		return needSymlink, needBackup, err
+		return false, err
 	}
 
-	if target == srcAbs {
-		outVerbose("  ✓ %s is correct symlink", destAbs)
-		return needSymlink, needBackup, nil
+	if target == src {
+		outVerbose("  ✓ %s is correct symlink", dest)
+		return false, nil
 	}
 
-	// dest is a wrong symlink
+	// here dest is a wrong symlink
+
 	// todo: if dry-run, just print
-	err = os.Remove(destAbs)
+	err = os.Remove(dest)
 	if err != nil {
-		return needSymlink, needBackup, err
+		return false, err
 	}
-	outInfo("  ✓ delete wrong symlink %s", destAbs)
+	outInfo("  ✓ delete wrong symlink %s", dest)
 
-	needSymlink = true
-	return needSymlink, needBackup, nil
+	return true, nil
+}
+
+// needBackup reports whether destination path needs to be backed up.
+func needBackup(dest string) (bool, error) {
+	fi, err := os.Lstat(dest)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // backup copies existing destination file to backup dir.
