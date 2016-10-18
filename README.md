@@ -197,4 +197,4 @@ which can be found at `$HOME/.dotbro/dotbro.log`.
 
 # License
 
-[MIT](https://github.com/hypnoglow/dotbro/blob/master/LICENCE.md)
+[MIT](https://github.com/hypnoglow/dotbro/blob/master/LICENSE.md)
