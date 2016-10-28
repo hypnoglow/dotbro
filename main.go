@@ -52,7 +52,7 @@ func main() {
 	// Select action
 
 	switch {
-	case args["add"] == true:
+	case args["add"]:
 		filename := args["<filename>"].(string)
 		if err = addAction(filename, config); err != nil {
 			outError("%s", err)
@@ -61,41 +61,19 @@ func main() {
 
 		outInfo("`%s` was successfully added to your dotfiles!", filename)
 		exit(0)
-	}
-
-	// Default action: install
-
-	err = cleanDeadSymlinks(config.Directories.Destination)
-	if err != nil {
-		outError("Error cleaning dead symlinks: %s", err)
-		exit(1)
-	}
-
-	srcDirAbs := config.Directories.Dotfiles
-	if config.Directories.Sources != "" {
-		if _, err = os.Stat(config.Directories.Sources); os.IsNotExist(err) {
-			outError("Sources directory `%s' does not exist.", config.Directories.Sources)
+	default:
+		// Default action: install
+		if err = installAction(config); err != nil {
+			outError("%s", err)
 			exit(1)
 		}
-		if err != nil {
-			outError("Error reading sources directory `%s': %s", config.Directories.Sources, err)
-			exit(1)
-		}
-		srcDirAbs += "/" + config.Directories.Sources
+
+		outInfo("All done (─‿‿─)")
+		exit(0)
 	}
-
-	mapping := getMapping(config, srcDirAbs)
-
-	outInfo("Installing dotfiles...")
-	for src, dest := range mapping {
-		installDotfile(src, dest, config, srcDirAbs)
-	}
-
-	outInfo("All done (─‿‿─)")
-	exit(0)
 }
 
-func addAction(filename string, config Configuration) error {
+func addAction(filename string, config *Configuration) error {
 	fileInfo, err := os.Lstat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -132,6 +110,35 @@ func addAction(filename string, config Configuration) error {
 	}
 
 	// TODO: write to config file
+
+	return nil
+}
+
+func installAction(config *Configuration) error {
+	// Default action: install
+
+	err := cleanDeadSymlinks(config.Directories.Destination)
+	if err != nil {
+		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
+	}
+
+	srcDirAbs := config.Directories.Dotfiles
+	if config.Directories.Sources != "" {
+		if _, err = os.Stat(config.Directories.Sources); os.IsNotExist(err) {
+			return fmt.Errorf("Sources directory `%s' does not exist.", config.Directories.Sources)
+		}
+		if err != nil {
+			return fmt.Errorf("Error reading sources directory `%s': %s", config.Directories.Sources, err)
+		}
+		srcDirAbs += "/" + config.Directories.Sources
+	}
+
+	mapping := getMapping(config, srcDirAbs)
+
+	outInfo("Installing dotfiles...")
+	for src, dst := range mapping {
+		installDotfile(src, dst, config, srcDirAbs)
+	}
 
 	return nil
 }
@@ -189,7 +196,11 @@ func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 			exit(1)
 		}
 
-		defer dir.Close()
+		defer func() {
+			if err = dir.Close(); err != nil {
+				outWarn("Error closing dir %s: $s", srcDirAbs, err.Error())
+			}
+		}()
 
 		files, err := dir.Readdir(0)
 		if err != nil {

@@ -34,7 +34,7 @@ func testIsExistsPositive(t *testing.T) {
 		t.Error(err)
 	}
 
-	if exists != true {
+	if !exists {
 		t.Errorf("Path %s should exist", testPath)
 	}
 
@@ -53,7 +53,9 @@ func testIsExistsNegative(t *testing.T) {
 	_, err := os.Stat(testPath)
 	if err == nil {
 		// path exists
-		os.Remove(testPath)
+		if err = os.Remove(testPath); err != nil {
+			t.Error(err)
+		}
 	}
 
 	// test
@@ -63,7 +65,7 @@ func testIsExistsNegative(t *testing.T) {
 		t.Error(err)
 	}
 
-	if exists != false {
+	if exists {
 		t.Errorf("Path %s should not exist", testPath)
 	}
 
@@ -95,7 +97,7 @@ func testIsExistsError(t *testing.T) {
 		t.Error(err)
 	}
 
-	if exists != false {
+	if exists {
 		t.Errorf("Path %s should return `false` on error", testPath)
 	}
 
