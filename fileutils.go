@@ -45,9 +45,14 @@ func copyFileContents(src, dst string) (err error) {
 		return
 	}
 
-	defer in.Close()
+	defer func() {
+		inCloseErr := in.Close()
+		if err == nil {
+			err = inCloseErr
+		}
+	}()
 
-	err = os.MkdirAll(path.Dir(dst), 0755)
+	err = os.MkdirAll(path.Dir(dst), 0700)
 	if err != nil {
 		return err
 	}
@@ -58,9 +63,9 @@ func copyFileContents(src, dst string) (err error) {
 	}
 
 	defer func() {
-		cerr := out.Close()
+		outCloseErr := out.Close()
 		if err == nil {
-			err = cerr
+			err = outCloseErr
 		}
 	}()
 

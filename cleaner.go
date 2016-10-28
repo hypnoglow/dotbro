@@ -11,7 +11,12 @@ func cleanDeadSymlinks(dirPath string) error {
 		return err
 	}
 
-	defer dir.Close()
+	defer func() {
+		dirCloseErr := dir.Close()
+		if err == nil {
+			err = dirCloseErr
+		}
+	}()
 
 	dirInfo, err := dir.Stat()
 	if err != nil {
@@ -27,36 +32,56 @@ func cleanDeadSymlinks(dirPath string) error {
 		return err
 	}
 
-	removedAny := false
+	return cleanFiles(dirPath, files)
+}
 
+func cleanFiles(dirPath string, files []os.FileInfo) error {
+	removedAny := false
 	for _, fileInfo := range files {
 		if fileInfo.Mode()&os.ModeSymlink != os.ModeSymlink {
 			continue
 		}
 
 		filepath := dirPath + "/" + fileInfo.Name()
-
-		target, err := os.Readlink(filepath)
+		removed, err := checkLinkIfBadRemove(filepath)
 		if err != nil {
 			return err
 		}
 
-		_, err = os.Stat(target)
-		if os.IsNotExist(err) {
-			os.Remove(filepath)
-
-			if removedAny == false {
-				removedAny = true
-				outInfo("Cleaning dead symlinks...")
-			}
-			outInfo("  ✓ %s has been removed (broken symlink)", filepath)
+		if !removed {
 			continue
 		}
 
-		if err != nil {
-			return err
+		if !removedAny {
+			removedAny = true
+			outInfo("Cleaning dead symlinks...")
 		}
+
+		outInfo("  ✓ %s has been removed (broken symlink)", filepath)
 	}
 
 	return nil
+}
+
+func checkLinkIfBadRemove(filepath string) (bool, error) {
+	target, err := os.Readlink(filepath)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(target)
+	if err == nil {
+		// File is ok, no need to remove.
+		return false, nil
+	}
+
+	if !os.IsNotExist(err) {
+		return false, err
+	}
+
+	if err := os.Remove(filepath); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
