@@ -37,7 +37,7 @@ func main() {
 
 	// Preparations
 
-	err = os.MkdirAll(config.Directories.Backup, 0755)
+	err = os.MkdirAll(config.Directories.Backup, 0700)
 	if err != nil && !os.IsExist(err) {
 		outError("Error creating backup directory: %s", err)
 		exit(1)

@@ -20,7 +20,7 @@ func createPath(file string) error {
 		return err
 	}
 
-	return os.MkdirAll(path, 0755)
+	return os.MkdirAll(path, 0700)
 }
 
 // isExists reports whether path exists (path may be a file or a directory).

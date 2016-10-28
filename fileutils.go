@@ -52,7 +52,7 @@ func copyFileContents(src, dst string) (err error) {
 		}
 	}()
 
-	err = os.MkdirAll(path.Dir(dst), 0755)
+	err = os.MkdirAll(path.Dir(dst), 0700)
 	if err != nil {
 		return err
 	}
