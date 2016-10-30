@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -131,4 +132,15 @@ func TestBackupCopy(t *testing.T) {
 	filenameContent, _ := ioutil.ReadFile(filename)
 	backupContent, _ := ioutil.ReadFile(backupDir + "/file")
 	assert.Equal(t, filenameContent, backupContent)
+}
+
+func TestSetSymlink(t *testing.T) {
+	srcAbs := "/tmp/dotbro/linker/TestSetSymlink/file"
+	destAbs := "/tmp/dotbro/linker/TestSetSymlink/filesymlink"
+	err := setSymlink(srcAbs, destAbs)
+	assert.Nil(t, err)
+
+	// Calling again should return an error since the link already exists
+	err = setSymlink(srcAbs, destAbs)
+	assert.EqualError(t, err, fmt.Sprintf("symlink %s %s: file exists", srcAbs, destAbs))
 }
