@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 )
 
-// NeedSymlink reports whether source file needs to be symlinked to destination path.
-func NeedSymlink(src, dest string) (bool, error) {
+// needSymlink reports whether source file needs to be symlinked to destination path.
+func needSymlink(src, dest string) (bool, error) {
 	fi, err := os.Lstat(dest)
 	if os.IsNotExist(err) {
 		return true, nil

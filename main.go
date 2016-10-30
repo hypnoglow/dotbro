@@ -245,7 +245,7 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 		return
 	}
 
-	needSymlink, err := NeedSymlink(srcAbs, destAbs)
+	needSymlink, err := needSymlink(srcAbs, destAbs)
 	if err != nil {
 		outError("Error processing destination file %s: %s", destAbs, err)
 		exit(1)
