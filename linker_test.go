@@ -23,7 +23,7 @@ func TestNeedSymlink(t *testing.T) {
 	wrongDest := "/tmp/dotbro/linker/wrongTestNeedSymlink"
 
 	actual, err := needSymlink(src, dest)
-	assert.True(t, true)
+	assert.True(t, actual)
 	assert.Equal(t, err, nil)
 
 	// Test destination is not a symlink
