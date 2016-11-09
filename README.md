@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/hypnoglow/dotbro.svg?branch=master)](https://travis-ci.org/hypnoglow/dotbro)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hypnoglow/dotbro)](https://goreportcard.com/report/github.com/hypnoglow/dotbro)
 [![codebeat badge](https://codebeat.co/badges/4c0586d0-1771-4751-b332-c9f0582ccddd)](https://codebeat.co/projects/github-com-hypnoglow-dotbro)
+<!-- [![Coverage Status](https://coveralls.io/repos/github/hypnoglow/dotbro/badge.svg)](https://coveralls.io/github/hypnoglow/dotbro) -->
 
 Dotbro is a tool which helps you install and keep your dotfiles up to date.
 
