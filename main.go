@@ -175,7 +175,9 @@ func getConfigPath(configArg interface{}) string {
 		exit(1)
 	}
 
-	if err = rc.Save(configPath); err != nil {
+	rc.SetPath(configPath)
+
+	if err = rc.Save(); err != nil {
 		outError("Cannot save rc file: %s", err)
 		exit(1)
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 // RCFilepath is path to dotbro's runcom file.
-const RCFilepath = "${HOME}/.dotbro/profile.json"
+var RCFilepath = "${HOME}/.dotbro/profile.json"
 
 // RC represents data for dotbro's runcom file.
 type RC struct {
@@ -22,6 +22,11 @@ type rcConfig struct {
 // NewRC returns a new RC.
 func NewRC() *RC {
 	return &RC{}
+}
+
+// SetPath sets config path.
+func (rc *RC) SetPath(configPath string) {
+	rc.Config.Path = configPath
 }
 
 // Load reads RC data from rcFilepath.
@@ -39,15 +44,13 @@ func (rc *RC) Load() (err error) {
 	return err
 }
 
-// Save saves RC data to rcFilepath.
-func (rc *RC) Save(configPath string) (err error) {
+// Save saves RC data to the file located at `RCFilepath`.
+func (rc *RC) Save() (err error) {
 	rcFile := os.ExpandEnv(RCFilepath)
 
 	if err = createPath(rcFile); err != nil {
 		return err
 	}
-
-	rc.Config.Path = configPath
 
 	bytes, err := json.MarshalIndent(rc, "", "    ")
 	if err != nil {
