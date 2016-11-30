@@ -51,7 +51,11 @@ func NewConfiguration(filename string) (conf *Configuration, err error) {
 		return nil, err
 	}
 
-	conf = processConf(conf)
+	conf, err = processConf(conf)
+	if err != nil {
+		return nil, err
+	}
+
 	conf.Filepath = filename
 	return conf, nil
 }
@@ -77,7 +81,7 @@ func fromJSON(filename string) (conf *Configuration, err error) {
 	return conf, nil
 }
 
-func processConf(c *Configuration) *Configuration {
+func processConf(c *Configuration) (*Configuration, error) {
 	params := getDirectoriesParams(c.Filepath)
 
 	t := reflect.TypeOf(c.Directories)
@@ -94,14 +98,13 @@ func processConf(c *Configuration) *Configuration {
 
 		err := checkIfDirCorrect(name, value, params[name].isRelative)
 		if err != nil {
-			outError("%s", err)
-			exit(1)
+			return nil, err
 		}
 
 		field.SetString(value)
 	}
 
-	return c
+	return c, nil
 }
 
 type directoryParam struct {
