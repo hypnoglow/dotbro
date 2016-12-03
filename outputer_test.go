@@ -6,9 +6,14 @@ import (
 	"testing"
 )
 
+type FakeLogWriterForOutputer struct{}
+
+func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {
+	return
+}
+
 func TestNewOutputer(t *testing.T) {
-	fakeLogger := new(FakeLogger)
-	NewOutputer(OutputerModeNormal, os.Stdout, fakeLogger)
+	NewOutputer(OutputerModeNormal, os.Stdout, &FakeLogWriterForOutputer{})
 }
 
 func TestOutputer_OutVerbose(t *testing.T) {
@@ -38,9 +43,8 @@ func TestOutputer_OutVerbose(t *testing.T) {
 		},
 	}
 
-	fakeLogger := new(FakeLogger)
 	output := bytes.NewBufferString("")
-	outputer := NewOutputer(OutputerModeVerbose, output, fakeLogger)
+	outputer := NewOutputer(OutputerModeVerbose, output, &FakeLogWriterForOutputer{})
 
 	for _, c := range cases {
 		output.Reset()
@@ -81,9 +85,8 @@ func TestOutputer_OutInfo(t *testing.T) {
 		},
 	}
 
-	fakeLogger := new(FakeLogger)
 	output := bytes.NewBufferString("")
-	outputer := NewOutputer(OutputerModeVerbose, output, fakeLogger)
+	outputer := NewOutputer(OutputerModeVerbose, output, &FakeLogWriterForOutputer{})
 
 	for _, c := range cases {
 		output.Reset()
@@ -124,9 +127,8 @@ func TestOutputer_OutWarn(t *testing.T) {
 		},
 	}
 
-	fakeLogger := new(FakeLogger)
 	output := bytes.NewBufferString("")
-	outputer := NewOutputer(OutputerModeVerbose, output, fakeLogger)
+	outputer := NewOutputer(OutputerModeVerbose, output, &FakeLogWriterForOutputer{})
 
 	for _, c := range cases {
 		output.Reset()
@@ -167,9 +169,8 @@ func TestOutputer_OutError(t *testing.T) {
 		},
 	}
 
-	fakeLogger := new(FakeLogger)
 	output := bytes.NewBufferString("")
-	outputer := NewOutputer(OutputerModeVerbose, output, fakeLogger)
+	outputer := NewOutputer(OutputerModeVerbose, output, &FakeLogWriterForOutputer{})
 
 	for _, c := range cases {
 		output.Reset()

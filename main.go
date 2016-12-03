@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 )
 
+const logFilepath = "${HOME}/.dotbro/dotbro.log"
+
+var debugLogger DebugLogger
 var outputer Outputer
 
 type OsStater struct{}
@@ -33,8 +37,11 @@ var (
 )
 
 func main() {
-	outputer = NewOutputer(OutputerModeNormal, os.Stdout, logger)
-	logger.Msg("Start.")
+	outputer = NewOutputer(OutputerModeNormal, os.Stdout, debugLogger)
+	initLogger()
+	outputer.Logger = debugLogger
+
+	debugLogger.Write("Start.")
 
 	// Parse arguments
 
@@ -44,7 +51,7 @@ func main() {
 		exit(1)
 	}
 
-	logger.Msg("Arguments passed: %+v", args)
+	debugLogger.Write("Arguments passed: %+v", args)
 
 	switch {
 	case args["--verbose"].(bool):
@@ -58,6 +65,7 @@ func main() {
 	// Process config
 
 	configPath := getConfigPath(args["--config"])
+	debugLogger.Write("Parsing config file %s", configPath)
 	config, err := NewConfiguration(configPath)
 	if err != nil {
 		outputer.OutError("Error reading configuration from file %s: %s", configPath, err)
@@ -98,6 +106,24 @@ func main() {
 		outputer.OutInfo("All done (─‿‿─)")
 		exit(0)
 	}
+}
+
+func initLogger() {
+	var filename = os.ExpandEnv(logFilepath)
+
+	err := CreatePath(osDirCheckMaker, filename)
+	if err != nil {
+		outputer.OutWarn("Cannot use log file %s. Reason: %s", filename, err)
+		return
+	}
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		outputer.OutWarn("Cannot use log file %s. Reason: %s", filename, err)
+		return
+	}
+
+	debugLogger = NewDebugLogger(log.New(f, "", log.Ldate|log.Ltime))
 }
 
 func addAction(filename string, config *Configuration) error {
@@ -303,4 +329,10 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 		outputer.OutError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
 		exit(1)
 	}
+}
+
+// exit actually calls os.Exit after logger logs exit message.
+func exit(exitCode int) {
+	debugLogger.Write("Exit with code %d.", exitCode)
+	os.Exit(exitCode)
 }

@@ -10,22 +10,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	returnCode := m.Run()
-	os.RemoveAll("/tmp/dotbro") // Cleanup
-	os.Exit(returnCode)
-}
+type FakeLogWriterForLinkerOutputer struct{}
 
-type FakeLogger struct{}
-
-func (f *FakeLogger) Msg(format string, v ...interface{}) {
+func (f *FakeLogWriterForLinkerOutputer) Write(format string, v ...interface{}) {
 	return
 }
 
+//
+// func TestMain(m *testing.M) {
+// 	// returnCode := m.Run()
+// 	os.RemoveAll("/tmp/dotbro") // Cleanup
+// 	// os.Exit(returnCode)
+// }
+
 func TestNeedSymlink(t *testing.T) {
 	// TODO: test fails if outputer is not defined.
-	logger := &FakeLogger{}
-	outputer = NewOutputer(OutputerModeQuiet, os.Stdout, logger)
+	outputer = NewOutputer(OutputerModeQuiet, os.Stdout, &FakeLogWriterForLinkerOutputer{})
+
+	os.RemoveAll("/tmp/dotbro") // Cleanup
 
 	// Test dest does not exist
 	src := "/tmp/dotbro/linker/TestNeedSymlink.txt"
@@ -77,6 +79,9 @@ func TestNeedSymlink(t *testing.T) {
 }
 
 func TestNeedBackup(t *testing.T) {
+
+	os.RemoveAll("/tmp/dotbro") // Cleanup
+
 	// Test dest does not exist
 	dest := "/tmp/dotbro/linker/TestNeedBackup.txt"
 
@@ -112,6 +117,9 @@ func TestNeedBackup(t *testing.T) {
 }
 
 func TestBackup(t *testing.T) {
+
+	os.RemoveAll("/tmp/dotbro") // Cleanup
+
 	dest := "new"
 	destAbs := "/tmp/dotbro/linker/TestBackup/new"
 	backupDir := "/tmp/dotbro/linker/TestBackup/backup"
@@ -128,6 +136,9 @@ func TestBackup(t *testing.T) {
 }
 
 func TestBackupCopy(t *testing.T) {
+
+	os.RemoveAll("/tmp/dotbro") // Cleanup
+
 	filename := "/tmp/dotbro/linker/TestBackupCopy/file"
 	backupDir := "/tmp/dotbro/linker/TestBackupCopy/backup"
 	if err := os.MkdirAll(path.Dir(filename), 0755); err != nil {
@@ -145,6 +156,9 @@ func TestBackupCopy(t *testing.T) {
 }
 
 func TestSetSymlink(t *testing.T) {
+
+	os.RemoveAll("/tmp/dotbro") // Cleanup
+
 	srcAbs := "/tmp/dotbro/linker/TestSetSymlink/file"
 	destAbs := "/tmp/dotbro/linker/TestSetSymlink/filesymlink"
 	err := setSymlink(srcAbs, destAbs)

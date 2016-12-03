@@ -17,11 +17,11 @@ const (
 type Outputer struct {
 	Mode   OutputerMode
 	Output io.Writer
-	Logger ILogger // TODO: refactor to interface
+	Logger LogWriter
 }
 
 // NewOutputer creates a new Outputer.
-func NewOutputer(mode OutputerMode, output io.Writer, logger ILogger) Outputer {
+func NewOutputer(mode OutputerMode, output io.Writer, logger LogWriter) Outputer {
 	return Outputer{
 		Mode:   mode,
 		Output: output,
@@ -33,7 +33,7 @@ func NewOutputer(mode OutputerMode, output io.Writer, logger ILogger) Outputer {
 func (o *Outputer) OutVerbose(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 
-	o.Logger.Msg(msg)
+	o.Logger.Write(msg)
 
 	if o.Mode < OutputerModeVerbose {
 		return
@@ -46,7 +46,7 @@ func (o *Outputer) OutVerbose(format string, v ...interface{}) {
 func (o *Outputer) OutInfo(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 
-	o.Logger.Msg(msg)
+	o.Logger.Write(msg)
 
 	if o.Mode < OutputerModeNormal {
 		return
@@ -59,7 +59,7 @@ func (o *Outputer) OutInfo(format string, v ...interface{}) {
 func (o *Outputer) OutWarn(format string, v ...interface{}) {
 	msg := fmt.Sprintf("WARN: %s", fmt.Sprintf(format, v...))
 
-	o.Logger.Msg(msg)
+	o.Logger.Write(msg)
 
 	fmt.Fprintln(o.Output, msg)
 }
@@ -68,7 +68,7 @@ func (o *Outputer) OutWarn(format string, v ...interface{}) {
 func (o *Outputer) OutError(format string, v ...interface{}) {
 	msg := fmt.Sprintf("ERRO: %s", fmt.Sprintf(format, v...))
 
-	o.Logger.Msg(msg)
+	o.Logger.Write(msg)
 
 	// TODO: write to stderr
 	fmt.Fprintln(o.Output, msg)
