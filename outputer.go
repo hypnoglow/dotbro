@@ -13,6 +13,13 @@ const (
 	OutputerModeVerbose OutputerMode = "9"
 )
 
+type IOutputer interface {
+	OutVerbose(format string, v ...interface{})
+	OutInfo(format string, v ...interface{})
+	OutWarn(format string, v ...interface{})
+	OutError(format string, v ...interface{})
+}
+
 // Outputer is a logger that shows the output to the user.
 type Outputer struct {
 	Mode   OutputerMode

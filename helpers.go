@@ -5,11 +5,7 @@ import (
 	"path/filepath"
 )
 
-type Stater interface {
-	Stat(name string) (os.FileInfo, error)
-	IsNotExist(err error) bool
-}
-
+// TODO: remove in favor of StatDirMaker
 type DirCheckMaker interface {
 	Stater
 	MkdirAll(path string, perm os.FileMode) error

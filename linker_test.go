@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -155,16 +156,67 @@ func TestBackupCopy(t *testing.T) {
 	assert.Equal(t, filenameContent, backupContent)
 }
 
-func TestSetSymlink(t *testing.T) {
+type FakeOutputer struct{}
 
-	os.RemoveAll("/tmp/dotbro") // Cleanup
+func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {
+	return
+}
 
-	srcAbs := "/tmp/dotbro/linker/TestSetSymlink/file"
-	destAbs := "/tmp/dotbro/linker/TestSetSymlink/filesymlink"
-	err := setSymlink(srcAbs, destAbs)
-	assert.Nil(t, err)
+func (o *FakeOutputer) OutInfo(format string, v ...interface{}) {
+	return
+}
 
-	// Calling again should return an error since the link already exists
-	err = setSymlink(srcAbs, destAbs)
-	assert.EqualError(t, err, fmt.Sprintf("symlink %s %s: file exists", srcAbs, destAbs))
+func (o *FakeOutputer) OutWarn(format string, v ...interface{}) {
+	return
+}
+
+func (o *FakeOutputer) OutError(format string, v ...interface{}) {
+	return
+}
+
+func TestNewLinker(t *testing.T) {
+	cases := []struct {
+		mkdirSymlinker *FakeMkdirSymlinker
+		srcAbs         string
+		destAbs        string
+		expectedError  error
+	}{
+		{
+			mkdirSymlinker: &FakeMkdirSymlinker{
+				&FakeDirMaker{MkdirAllError: nil},
+				&FakeSymlinker{SymlinkError: nil},
+			},
+			srcAbs:        "/src/path",
+			destAbs:       "/dest/path",
+			expectedError: nil,
+		},
+		{
+			mkdirSymlinker: &FakeMkdirSymlinker{
+				&FakeDirMaker{MkdirAllError: errors.New("Permission denied")},
+				&FakeSymlinker{SymlinkError: nil},
+			},
+			srcAbs:        "/src/path",
+			destAbs:       "/dest/path",
+			expectedError: errors.New("Permission denied"),
+		},
+		{
+			mkdirSymlinker: &FakeMkdirSymlinker{
+				&FakeDirMaker{MkdirAllError: nil},
+				&FakeSymlinker{SymlinkError: errors.New("File exists")},
+			},
+			srcAbs:        "/src/path",
+			destAbs:       "/dest/path",
+			expectedError: errors.New("File exists"),
+		},
+	}
+
+	for _, c := range cases {
+		linker := NewLinker(&FakeOutputer{}, c.mkdirSymlinker)
+
+		err := linker.SetSymlink(c.srcAbs, c.destAbs)
+		if !reflect.DeepEqual(err, c.expectedError) {
+			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
+		}
+	}
+
 }

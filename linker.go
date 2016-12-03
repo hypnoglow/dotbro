@@ -6,6 +6,18 @@ import (
 	"path/filepath"
 )
 
+type Linker struct {
+	outputer IOutputer
+	fs       MkdirSymlinker
+}
+
+func NewLinker(outputer IOutputer, fs MkdirSymlinker) Linker {
+	return Linker{
+		outputer: outputer,
+		fs:       fs,
+	}
+}
+
 // needSymlink reports whether source file needs to be symlinked to destination path.
 func needSymlink(src, dest string) (bool, error) {
 	fi, err := os.Lstat(dest)
@@ -96,23 +108,18 @@ func backupCopy(filename, backupDir string) error {
 	return err
 }
 
-// setSymlink symlinks scrAbs to destAbs
-func setSymlink(srcAbs string, destAbs string) error {
-	var err error
-
-	// todo: if dry-run, just print
+// SetSymlink symlinks scrAbs to destAbs.
+func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 
 	dir := path.Dir(destAbs)
-	err = os.MkdirAll(dir, 0700)
-	if err != nil {
+	if err := l.fs.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
-	err = os.Symlink(srcAbs, destAbs)
-	if err != nil {
+	if err := l.fs.Symlink(srcAbs, destAbs); err != nil {
 		return err
 	}
 
-	outputer.OutInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
+	l.outputer.OutInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
 	return nil
 }

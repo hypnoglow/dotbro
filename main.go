@@ -32,8 +32,9 @@ func (dcm *OsDirCheckMaker) MkdirAll(path string, perm os.FileMode) error {
 }
 
 var (
-	osStater        = new(OsStater)
-	osDirCheckMaker = new(OsDirCheckMaker)
+	osStater         = new(OsStater)
+	osDirCheckMaker  = new(OsDirCheckMaker)
+	osMkdirSymlinker = new(OsMkdirSymlinker)
 )
 
 func main() {
@@ -157,8 +158,10 @@ func addAction(filename string, config *Configuration) error {
 		return err
 	}
 
+	linker := NewLinker(&outputer, osMkdirSymlinker)
+
 	// Add a symlink to the moved file
-	if err = setSymlink(newPath, filename); err != nil {
+	if err = linker.SetSymlink(newPath, filename); err != nil {
 		return err
 	}
 
@@ -187,10 +190,11 @@ func installAction(config *Configuration) error {
 	}
 
 	mapping := getMapping(config, srcDirAbs)
+	linker := NewLinker(&outputer, osMkdirSymlinker)
 
 	outputer.OutInfo("Installing dotfiles...")
 	for src, dst := range mapping {
-		installDotfile(src, dst, config, srcDirAbs)
+		installDotfile(src, dst, linker, config, srcDirAbs)
 	}
 
 	return nil
@@ -285,7 +289,7 @@ func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 	return mapping
 }
 
-func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
+func installDotfile(src, dest string, linker Linker, config *Configuration, srcDirAbs string) {
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
@@ -324,7 +328,7 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 		}
 	}
 
-	err = setSymlink(srcAbs, destAbs)
+	err = linker.SetSymlink(srcAbs, destAbs)
 	if err != nil {
 		outputer.OutError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
 		exit(1)
