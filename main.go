@@ -7,8 +7,7 @@ import (
 	"path/filepath"
 )
 
-var isVerbose bool
-var isQuiet bool
+var outputer Outputer
 
 type OsStater struct{}
 
@@ -34,27 +33,34 @@ var (
 )
 
 func main() {
-	logger.msg("Start.")
+	outputer = NewOutputer(OutputerModeNormal, os.Stdout, logger)
+	logger.Msg("Start.")
 
 	// Parse arguments
 
 	args, err := parseArguments()
 	if err != nil {
-		outError("Error parsing aruments: %s", err)
+		outputer.OutError("Error parsing aruments: %s", err)
 		exit(1)
 	}
 
-	logger.msg("Arguments passed: %+v", args)
+	logger.Msg("Arguments passed: %+v", args)
 
-	isVerbose = args["--verbose"].(bool)
-	isQuiet = args["--quiet"].(bool)
-	configPath := getConfigPath(args["--config"])
+	switch {
+	case args["--verbose"].(bool):
+		outputer.Mode = OutputerModeVerbose
+	case args["--quiet"].(bool):
+		outputer.Mode = OutputerModeQuiet
+	default:
+		outputer.Mode = OutputerModeNormal
+	}
 
 	// Process config
 
+	configPath := getConfigPath(args["--config"])
 	config, err := NewConfiguration(configPath)
 	if err != nil {
-		outError("Error reading configuration from file %s: %s", configPath, err)
+		outputer.OutError("Error reading configuration from file %s: %s", configPath, err)
 		exit(1)
 	}
 
@@ -62,15 +68,13 @@ func main() {
 
 	err = os.MkdirAll(config.Directories.Backup, 0700)
 	if err != nil && !os.IsExist(err) {
-		outError("Error creating backup directory: %s", err)
+		outputer.OutError("Error creating backup directory: %s", err)
 		exit(1)
 	}
 
-	if isVerbose {
-		outVerbose("Dotfiles root: %s", config.Directories.Dotfiles)
-		outVerbose("Dotfiles src: %s", config.Directories.Sources)
-		outVerbose("Destination dir: %s", config.Directories.Destination)
-	}
+	outputer.OutVerbose("Dotfiles root: %s", config.Directories.Dotfiles)
+	outputer.OutVerbose("Dotfiles src: %s", config.Directories.Sources)
+	outputer.OutVerbose("Destination dir: %s", config.Directories.Destination)
 
 	// Select action
 
@@ -78,20 +82,20 @@ func main() {
 	case args["add"]:
 		filename := args["<filename>"].(string)
 		if err = addAction(filename, config); err != nil {
-			outError("%s", err)
+			outputer.OutError("%s", err)
 			exit(1)
 		}
 
-		outInfo("`%s` was successfully added to your dotfiles!", filename)
+		outputer.OutInfo("`%s` was successfully added to your dotfiles!", filename)
 		exit(0)
 	default:
 		// Default action: install
 		if err = installAction(config); err != nil {
-			outError("%s", err)
+			outputer.OutError("%s", err)
 			exit(1)
 		}
 
-		outInfo("All done (─‿‿─)")
+		outputer.OutInfo("All done (─‿‿─)")
 		exit(0)
 	}
 }
@@ -113,7 +117,7 @@ func addAction(filename string, config *Configuration) error {
 		return fmt.Errorf("Cannot add dir %s - directories are not supported yet.", filename)
 	}
 
-	outVerbose("Adding file `%s` to dotfiles root `%s`", filename, config.Directories.Dotfiles)
+	outputer.OutVerbose("Adding file `%s` to dotfiles root `%s`", filename, config.Directories.Dotfiles)
 
 	// backup file
 	err = backupCopy(filename, config.Directories.Backup)
@@ -158,7 +162,7 @@ func installAction(config *Configuration) error {
 
 	mapping := getMapping(config, srcDirAbs)
 
-	outInfo("Installing dotfiles...")
+	outputer.OutInfo("Installing dotfiles...")
 	for src, dst := range mapping {
 		installDotfile(src, dst, config, srcDirAbs)
 	}
@@ -178,34 +182,34 @@ func getConfigPath(configArg interface{}) string {
 	// If config param is not passed to dotbro, read it from RC file.
 	if configPath == "" {
 		if err = rc.Load(); err != nil {
-			outError("Error reading rc file: %s", err)
+			outputer.OutError("Error reading rc file: %s", err)
 			exit(1)
 		}
 
 		if rc.Config.Path == "" {
-			outError("Config file not specified.")
+			outputer.OutError("Config file not specified.")
 			exit(1)
 		}
 
-		outVerbose("Got config path from file `%s`", RCFilepath)
+		outputer.OutVerbose("Got config path from file `%s`", RCFilepath)
 		return rc.Config.Path
 	}
 
 	// Save to RC file
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {
-		outError("Bad config path: %s", err)
+		outputer.OutError("Bad config path: %s", err)
 		exit(1)
 	}
 
 	rc.SetPath(configPath)
 
 	if err = rc.Save(); err != nil {
-		outError("Cannot save rc file: %s", err)
+		outputer.OutError("Cannot save rc file: %s", err)
 		exit(1)
 	}
 
-	outVerbose("Saved config path to file `%s`", RCFilepath)
+	outputer.OutVerbose("Saved config path to file `%s`", RCFilepath)
 	return rc.Config.Path
 }
 
@@ -214,22 +218,22 @@ func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 
 	if len(config.Mapping) == 0 {
 		// install all the things
-		outVerbose("Mapping is not specified - install all the things")
+		outputer.OutVerbose("Mapping is not specified - install all the things")
 		dir, err := os.Open(srcDirAbs)
 		if err != nil {
-			outError("Error reading dotfiles source dir: %s", err)
+			outputer.OutError("Error reading dotfiles source dir: %s", err)
 			exit(1)
 		}
 
 		defer func() {
 			if err = dir.Close(); err != nil {
-				outWarn("Error closing dir %s: $s", srcDirAbs, err.Error())
+				outputer.OutWarn("Error closing dir %s: $s", srcDirAbs, err.Error())
 			}
 		}()
 
 		files, err := dir.Readdir(0)
 		if err != nil {
-			outError("Error reading dotfiles source dir: %s", err)
+			outputer.OutError("Error reading dotfiles source dir: %s", err)
 			exit(1)
 		}
 
@@ -246,7 +250,7 @@ func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 	} else {
 		// install by mapping
 		if len(config.Files.Excludes) > 0 {
-			outWarn("Excludes in config make no sense when mapping is specified, omitting them.")
+			outputer.OutWarn("Excludes in config make no sense when mapping is specified, omitting them.")
 		}
 
 		mapping = config.Mapping
@@ -261,18 +265,18 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 
 	exists, err := IsExists(osStater, srcAbs)
 	if err != nil {
-		outError("Error processing source file %s: %s", src, err)
+		outputer.OutError("Error processing source file %s: %s", src, err)
 		exit(1)
 	}
 
 	if !exists {
-		outWarn("Source file %s does not exist", srcAbs)
+		outputer.OutWarn("Source file %s does not exist", srcAbs)
 		return
 	}
 
 	needSymlink, err := needSymlink(srcAbs, destAbs)
 	if err != nil {
-		outError("Error processing destination file %s: %s", destAbs, err)
+		outputer.OutError("Error processing destination file %s: %s", destAbs, err)
 		exit(1)
 	}
 
@@ -282,21 +286,21 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 
 	needBackup, err := needBackup(destAbs)
 	if err != nil {
-		outError("Error processing destination file %s: %s", destAbs, err)
+		outputer.OutError("Error processing destination file %s: %s", destAbs, err)
 		exit(1)
 	}
 
 	if needBackup {
 		err = backup(dest, destAbs, config.Directories.Backup)
 		if err != nil {
-			outError("Error backuping file %s: %s", destAbs, err)
+			outputer.OutError("Error backuping file %s: %s", destAbs, err)
 			exit(1)
 		}
 	}
 
 	err = setSymlink(srcAbs, destAbs)
 	if err != nil {
-		outError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
+		outputer.OutError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
 		exit(1)
 	}
 }

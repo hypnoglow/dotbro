@@ -26,7 +26,7 @@ func needSymlink(src, dest string) (bool, error) {
 	}
 
 	if target == src {
-		outVerbose("  ✓ %s is correct symlink", dest)
+		outputer.OutVerbose("  ✓ %s is correct symlink", dest)
 		return false, nil
 	}
 
@@ -37,7 +37,7 @@ func needSymlink(src, dest string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	outInfo("  ✓ delete wrong symlink %s", dest)
+	outputer.OutInfo("  ✓ delete wrong symlink %s", dest)
 
 	return true, nil
 }
@@ -70,7 +70,7 @@ func backup(dest string, destAbs string, backupDir string) error {
 	}
 
 	backupPath := backupDir + "/" + dest
-	outVerbose("  → backup %s to %s", destAbs, backupPath)
+	outputer.OutVerbose("  → backup %s to %s", destAbs, backupPath)
 	err = os.Rename(destAbs, backupPath)
 	return err
 }
@@ -90,7 +90,7 @@ func backupCopy(filename, backupDir string) error {
 		return err
 	}
 
-	outVerbose("  → backup %s to %s", abs, backupPath)
+	outputer.OutVerbose("  → backup %s to %s", abs, backupPath)
 
 	err = Copy(filename, backupPath)
 	return err
@@ -113,6 +113,6 @@ func setSymlink(srcAbs string, destAbs string) error {
 		return err
 	}
 
-	outInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
+	outputer.OutInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
 	return nil
 }

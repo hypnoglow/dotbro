@@ -16,7 +16,17 @@ func TestMain(m *testing.M) {
 	os.Exit(returnCode)
 }
 
+type FakeLogger struct{}
+
+func (f *FakeLogger) Msg(format string, v ...interface{}) {
+	return
+}
+
 func TestNeedSymlink(t *testing.T) {
+	// TODO: test fails if outputer is not defined.
+	logger := &FakeLogger{}
+	outputer = NewOutputer(OutputerModeQuiet, os.Stdout, logger)
+
 	// Test dest does not exist
 	src := "/tmp/dotbro/linker/TestNeedSymlink.txt"
 	dest := "/tmp/dotbro/linker/TestNeedSymlink.txt"

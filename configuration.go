@@ -36,7 +36,7 @@ type Files struct {
 
 // NewConfiguration returns a new Configuration.
 func NewConfiguration(filename string) (conf *Configuration, err error) {
-	logger.msg("Parsing config file %s", filename)
+	logger.Msg("Parsing config file %s", filename)
 
 	switch filepath.Ext(filename) {
 	case ".toml":
