@@ -10,6 +10,29 @@ import (
 var isVerbose bool
 var isQuiet bool
 
+type OsStater struct{}
+
+func (s *OsStater) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
+}
+
+func (s *OsStater) IsNotExist(err error) bool {
+	return os.IsNotExist(err)
+}
+
+type OsDirCheckMaker struct {
+	OsStater
+}
+
+func (dcm *OsDirCheckMaker) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
+var (
+	osStater        = new(OsStater)
+	osDirCheckMaker = new(OsDirCheckMaker)
+)
+
 func main() {
 	logger.msg("Start.")
 
@@ -236,7 +259,7 @@ func installDotfile(src, dest string, config *Configuration, srcDirAbs string) {
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
-	exists, err := isExists(srcAbs)
+	exists, err := IsExists(osStater, srcAbs)
 	if err != nil {
 		outError("Error processing source file %s: %s", src, err)
 		exit(1)

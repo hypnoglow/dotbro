@@ -5,28 +5,38 @@ import (
 	"path/filepath"
 )
 
-// createPath creates directories leading to file if they do not exist.
-func createPath(file string) error {
+type Stater interface {
+	Stat(name string) (os.FileInfo, error)
+	IsNotExist(err error) bool
+}
+
+type DirCheckMaker interface {
+	Stater
+	MkdirAll(path string, perm os.FileMode) error
+}
+
+// CreatePath creates directories leading to file if they do not exist.
+func CreatePath(dcm DirCheckMaker, file string) error {
 	var err error
 	var path = filepath.Dir(file)
 
-	_, err = os.Stat(path)
+	_, err = dcm.Stat(path)
 	if err == nil {
 		// path exists
 		return nil
 	}
 
-	if !os.IsNotExist(err) {
+	if !dcm.IsNotExist(err) {
 		return err
 	}
 
-	return os.MkdirAll(path, 0700)
+	return dcm.MkdirAll(path, 0700)
 }
 
-// isExists reports whether path exists (path may be a file or a directory).
-func isExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
+// IsExists reports whether path exists (path may be a file or a directory).
+func IsExists(stater Stater, path string) (bool, error) {
+	_, err := stater.Stat(path)
+	if stater.IsNotExist(err) {
 		return false, nil
 	}
 

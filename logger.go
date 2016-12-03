@@ -21,7 +21,7 @@ var logger *Logger
 func init() {
 	var filename = os.ExpandEnv(logFilepath)
 
-	err := createPath(filename)
+	err := CreatePath(osDirCheckMaker, filename)
 	if err != nil {
 		outWarn("Cannot use log file %s. Reason: %s", filename, err)
 		return

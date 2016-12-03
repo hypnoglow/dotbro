@@ -1,113 +1,140 @@
 package main
 
 import (
-	"io/ioutil"
+	"errors"
 	"os"
-	"path"
+	"reflect"
 	"testing"
 )
 
+type FakeStater struct {
+	StatFileInfo     os.FileInfo
+	StatError        error
+	IsNotExistResult bool
+}
+
+func (f *FakeStater) Stat(name string) (os.FileInfo, error) {
+	return f.StatFileInfo, f.StatError
+}
+
+func (f *FakeStater) IsNotExist(err error) bool {
+	return f.IsNotExistResult
+}
+
+type FakeDirCheckMaker struct {
+	*FakeStater
+	MkdirAllError error
+}
+
+func (f *FakeDirCheckMaker) MkdirAll(path string, perm os.FileMode) error {
+	return f.MkdirAllError
+}
+
 func TestIsExists(t *testing.T) {
-	testIsExistsPositive(t)
-	testIsExistsNegative(t)
-	testIsExistsError(t)
-}
-
-func testIsExistsPositive(t *testing.T) {
-	// set up
-
-	testPath := "/tmp/dotbro/helpers/file.txt"
-	content := []byte("Some Content")
-
-	if err := os.MkdirAll(path.Dir(testPath), 0755); err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		stater         *FakeStater
+		name           string
+		expectedResult bool
+		expectedError  error
+	}{
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        errors.New("Permission denied"),
+				IsNotExistResult: false,
+			},
+			name:           "/path/that/errors/on/stat",
+			expectedResult: false,
+			expectedError:  errors.New("Permission denied"),
+		},
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        errors.New("Not exists"),
+				IsNotExistResult: true,
+			},
+			name:           "/path/that/exists",
+			expectedResult: false,
+			expectedError:  nil,
+		},
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        nil,
+				IsNotExistResult: false,
+			},
+			name:           "/path/that/not/exists",
+			expectedResult: true,
+			expectedError:  nil,
+		},
 	}
 
-	if err := ioutil.WriteFile(testPath, content, 0755); err != nil {
-		t.Fatal(err)
-	}
+	for _, testcase := range cases {
+		exists, err := IsExists(testcase.stater, testcase.name)
+		if exists != testcase.expectedResult {
+			t.Errorf("Expected %v but got %v\n", testcase.expectedResult, exists)
+		}
 
-	// test
-
-	exists, err := isExists(testPath)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !exists {
-		t.Errorf("Path %s should exist", testPath)
-	}
-
-	// tear down
-
-	if err := os.Remove(testPath); err != nil {
-		t.Error(err)
-	}
-}
-
-func testIsExistsNegative(t *testing.T) {
-	// set up
-
-	testPath := "/tmp/dotbro/helpers/file.txt"
-
-	_, err := os.Stat(testPath)
-	if err == nil {
-		// path exists
-		if err = os.Remove(testPath); err != nil {
-			t.Error(err)
+		if !reflect.DeepEqual(err, testcase.expectedError) {
+			t.Errorf("Expected err to be %v but it was %v\n", testcase.expectedError, err)
 		}
 	}
-
-	// test
-
-	exists, err := isExists(testPath)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if exists {
-		t.Errorf("Path %s should not exist", testPath)
-	}
-
-	// tear down
 }
 
-func testIsExistsError(t *testing.T) {
-	// set up
-
-	testPath := "/tmp/dotbro/helpers/denied/denied.txt"
-	content := []byte("Some Content")
-
-	if err := os.MkdirAll(path.Dir(testPath), 0755); err != nil {
-		t.Fatal(err)
+func TestCreatePath(t *testing.T) {
+	cases := []struct {
+		dirCheckMaker *FakeDirCheckMaker
+		file          string
+		expectedError error
+	}{
+		{
+			dirCheckMaker: &FakeDirCheckMaker{
+				FakeStater: &FakeStater{
+					StatError: nil,
+				},
+			},
+			file:          "/path/that/already/exists",
+			expectedError: nil,
+		},
+		{
+			dirCheckMaker: &FakeDirCheckMaker{
+				FakeStater: &FakeStater{
+					StatError:        errors.New("Not exists"),
+					IsNotExistResult: true,
+				},
+			},
+			file:          "/path/that/will/be/created",
+			expectedError: nil,
+		},
+		{
+			dirCheckMaker: &FakeDirCheckMaker{
+				FakeStater: &FakeStater{
+					StatError:        errors.New("Permission denied"),
+					IsNotExistResult: false,
+				},
+				MkdirAllError: nil,
+			},
+			file:          "/path/that/cannot/be/scanned",
+			expectedError: errors.New("Permission denied"),
+		},
+		{
+			dirCheckMaker: &FakeDirCheckMaker{
+				FakeStater: &FakeStater{
+					StatError:        errors.New("Not exists"),
+					IsNotExistResult: true,
+				},
+				MkdirAllError: errors.New("Cannot create dir: Permission denied"),
+			},
+			file:          "/path/that/cannot/be/created",
+			expectedError: errors.New("Cannot create dir: Permission denied"),
+		},
 	}
 
-	if err := ioutil.WriteFile(testPath, content, 0755); err != nil {
-		t.Fatal(err)
-	}
+	for _, testcase := range cases {
+		err := CreatePath(testcase.dirCheckMaker, testcase.file)
 
-	if err := os.Chmod(path.Dir(testPath), 0000); err != nil {
-		t.Fatal(err)
-	}
-
-	// test
-
-	exists, err := isExists(testPath)
-	if err == nil {
-		t.Error(err)
-	}
-
-	if exists {
-		t.Errorf("Path %s should return `false` on error", testPath)
-	}
-
-	// tear down
-
-	if err := os.Chmod(path.Dir(testPath), 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := os.RemoveAll(path.Dir(testPath)); err != nil {
-		t.Error(err)
+		if !reflect.DeepEqual(err, testcase.expectedError) {
+			t.Errorf("Expected err to be %v but it was %v\n", testcase.expectedError, err)
+		}
 	}
 }

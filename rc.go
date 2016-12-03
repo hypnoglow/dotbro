@@ -48,7 +48,7 @@ func (rc *RC) Load() (err error) {
 func (rc *RC) Save() (err error) {
 	rcFile := os.ExpandEnv(RCFilepath)
 
-	if err = createPath(rcFile); err != nil {
+	if err = CreatePath(osDirCheckMaker, rcFile); err != nil {
 		return err
 	}
 
