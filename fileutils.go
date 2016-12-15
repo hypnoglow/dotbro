@@ -7,6 +7,20 @@ import (
 	"path"
 )
 
+// IsExists reports whether path exists (path may be a file or a directory).
+func IsExists(stater Stater, path string) (bool, error) {
+	_, err := stater.Stat(path)
+	if stater.IsNotExist(err) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // Copy copies a file from src to dst.
 func Copy(src, dst string) error {
 	sfi, err := os.Lstat(src)

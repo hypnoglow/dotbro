@@ -1,11 +1,64 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 )
+
+func TestIsExists(t *testing.T) {
+	cases := []struct {
+		stater         *FakeStater
+		name           string
+		expectedResult bool
+		expectedError  error
+	}{
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        errors.New("Permission denied"),
+				IsNotExistResult: false,
+			},
+			name:           "/path/that/errors/on/stat",
+			expectedResult: false,
+			expectedError:  errors.New("Permission denied"),
+		},
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        errors.New("Not exists"),
+				IsNotExistResult: true,
+			},
+			name:           "/path/that/exists",
+			expectedResult: false,
+			expectedError:  nil,
+		},
+		{
+			stater: &FakeStater{
+				StatFileInfo:     nil, // does not matter
+				StatError:        nil,
+				IsNotExistResult: false,
+			},
+			name:           "/path/that/not/exists",
+			expectedResult: true,
+			expectedError:  nil,
+		},
+	}
+
+	for _, testcase := range cases {
+		exists, err := IsExists(testcase.stater, testcase.name)
+		if exists != testcase.expectedResult {
+			t.Errorf("Expected %v but got %v\n", testcase.expectedResult, exists)
+		}
+
+		if !reflect.DeepEqual(err, testcase.expectedError) {
+			t.Errorf("Expected err to be %v but it was %v\n", testcase.expectedError, err)
+		}
+	}
+}
 
 func TestCopy(t *testing.T) {
 	testCopyPositive(t)

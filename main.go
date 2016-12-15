@@ -13,27 +13,9 @@ const logFilepath = "${HOME}/.dotbro/dotbro.log"
 var debugLogger DebugLogger
 var outputer Outputer
 
-type OsStater struct{}
-
-func (s *OsStater) Stat(name string) (os.FileInfo, error) {
-	return os.Stat(name)
-}
-
-func (s *OsStater) IsNotExist(err error) bool {
-	return os.IsNotExist(err)
-}
-
-type OsDirCheckMaker struct {
-	OsStater
-}
-
-func (dcm *OsDirCheckMaker) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
 var (
 	osStater         = new(OsStater)
-	osDirCheckMaker  = new(OsDirCheckMaker)
+	osDirMaker       = new(OsDirMaker)
 	osMkdirSymlinker = new(OsMkdirSymlinker)
 )
 
@@ -112,8 +94,7 @@ func main() {
 func initLogger() {
 	var filename = os.ExpandEnv(logFilepath)
 
-	err := CreatePath(osDirCheckMaker, filename)
-	if err != nil {
+	if err := osDirMaker.MkdirAll(filepath.Dir(filename), 0700); err != nil {
 		outputer.OutWarn("Cannot use log file %s. Reason: %s", filename, err)
 		return
 	}

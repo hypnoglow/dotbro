@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 // RCFilepath is path to dotbro's runcom file.
@@ -48,7 +49,7 @@ func (rc *RC) Load() (err error) {
 func (rc *RC) Save() (err error) {
 	rcFile := os.ExpandEnv(RCFilepath)
 
-	if err = CreatePath(osDirCheckMaker, rcFile); err != nil {
+	if err = osDirMaker.MkdirAll(filepath.Dir(rcFile), 0700); err != nil {
 		return err
 	}
 
