@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -8,13 +9,13 @@ import (
 
 type Linker struct {
 	outputer IOutputer
-	fs       MkdirSymlinker
+	os       OS
 }
 
-func NewLinker(outputer IOutputer, fs MkdirSymlinker) Linker {
+func NewLinker(outputer IOutputer, os OS) Linker {
 	return Linker{
 		outputer: outputer,
-		fs:       fs,
+		os:       os,
 	}
 }
 
@@ -71,19 +72,26 @@ func needBackup(dest string) (bool, error) {
 	return false, nil
 }
 
-// backup copies existing destination file to backup dir.
-func backup(dest string, destAbs string, backupDir string) error {
+// Move moves oldpath to newpath, creating target directories if need.
+func (l *Linker) Move(oldpath, newpath string) error {
 	// todo: if dry-run, just print
 
-	dir := path.Dir(backupDir + "/" + dest)
-	err := os.MkdirAll(dir, 0700)
+	// check if destination file exists
+	exists, err := IsExists(l.os, oldpath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("File %s not exists", oldpath)
+	}
+
+	err = l.os.MkdirAll(path.Dir(newpath), 0700)
 	if err != nil {
 		return err
 	}
 
-	backupPath := backupDir + "/" + dest
-	outputer.OutVerbose("  → backup %s to %s", destAbs, backupPath)
-	err = os.Rename(destAbs, backupPath)
+	l.outputer.OutVerbose("  → backup %s to %s", oldpath, newpath)
+	err = l.os.Rename(oldpath, newpath)
 	return err
 }
 
@@ -112,11 +120,11 @@ func backupCopy(filename, backupDir string) error {
 func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 
 	dir := path.Dir(destAbs)
-	if err := l.fs.MkdirAll(dir, 0700); err != nil {
+	if err := l.os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
-	if err := l.fs.Symlink(srcAbs, destAbs); err != nil {
+	if err := l.os.Symlink(srcAbs, destAbs); err != nil {
 		return err
 	}
 

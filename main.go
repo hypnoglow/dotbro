@@ -17,6 +17,7 @@ var (
 	osStater         = new(OsStater)
 	osDirMaker       = new(OsDirMaker)
 	osMkdirSymlinker = new(OsMkdirSymlinker)
+	osfs             = new(OSFS)
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 
 	// Parse arguments
 
-	args, err := parseArguments()
+	args, err := ParseArguments(nil)
 	if err != nil {
 		outputer.OutError("Error parsing aruments: %s", err)
 		exit(1)
@@ -133,13 +134,13 @@ func addAction(filename string, config *Configuration) error {
 		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
 	}
 
-	// move file to dotfiles root
+	// Move file to dotfiles root
 	newPath := config.Directories.Dotfiles + "/" + path.Base(filename)
 	if err = os.Rename(filename, newPath); err != nil {
 		return err
 	}
 
-	linker := NewLinker(&outputer, osMkdirSymlinker)
+	linker := NewLinker(&outputer, osfs)
 
 	// Add a symlink to the moved file
 	if err = linker.SetSymlink(newPath, filename); err != nil {
@@ -171,7 +172,7 @@ func installAction(config *Configuration) error {
 	}
 
 	mapping := getMapping(config, srcDirAbs)
-	linker := NewLinker(&outputer, osMkdirSymlinker)
+	linker := NewLinker(&outputer, osfs)
 
 	outputer.OutInfo("Installing dotfiles...")
 	for src, dst := range mapping {
@@ -302,9 +303,11 @@ func installDotfile(src, dest string, linker Linker, config *Configuration, srcD
 	}
 
 	if needBackup {
-		err = backup(dest, destAbs, config.Directories.Backup)
+		oldpath := destAbs
+		newpath := config.Directories.Backup + "/" + dest
+		err = linker.Move(oldpath, newpath)
 		if err != nil {
-			outputer.OutError("Error backuping file %s: %s", destAbs, err)
+			outputer.OutError("Error on file backup %s: %s", oldpath, err)
 			exit(1)
 		}
 	}

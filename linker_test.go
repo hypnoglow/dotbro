@@ -117,23 +117,61 @@ func TestNeedBackup(t *testing.T) {
 	assert.False(t, actual)
 }
 
-func TestBackup(t *testing.T) {
-
-	os.RemoveAll("/tmp/dotbro") // Cleanup
-
-	dest := "new"
-	destAbs := "/tmp/dotbro/linker/TestBackup/new"
-	backupDir := "/tmp/dotbro/linker/TestBackup/backup"
-
-	err := backup(dest, destAbs, backupDir)
-	assert.Error(t, err)
-
-	err = os.MkdirAll(destAbs, 0700)
-	if err != nil {
-		t.Fatal(err)
+func TestMove(t *testing.T) {
+	cases := []struct {
+		os            *FakeOS
+		oldpath       string
+		newpath       string
+		expectedError error
+	}{
+		{
+			// Failure when IsExists fails
+			os: &FakeOS{
+				StatError: errors.New("Some error"),
+			},
+			expectedError: errors.New("Some error"),
+		},
+		{
+			// Failure when dest file not exists
+			os: &FakeOS{
+				IsNotExistResult: true,
+			},
+			oldpath:       "/path/dest",
+			expectedError: errors.New("File /path/dest not exists"),
+		},
+		{
+			// Failure when MkdirAll fails
+			os: &FakeOS{
+				IsNotExistResult: false,
+				MkdirAllError:    errors.New("MkdirAll error"),
+			},
+			expectedError: errors.New("MkdirAll error"),
+		},
+		{
+			// Failure when Rename fails
+			os: &FakeOS{
+				IsNotExistResult: false,
+				RenameError:      errors.New("Rename error"),
+			},
+			expectedError: errors.New("Rename error"),
+		},
+		{
+			// Success
+			os: &FakeOS{
+				IsNotExistResult: false,
+			},
+			expectedError: nil,
+		},
 	}
-	err = backup(dest, destAbs, backupDir)
-	assert.Empty(t, err)
+
+	for _, c := range cases {
+		linker := NewLinker(&FakeOutputer{}, c.os)
+		err := linker.Move(c.oldpath, c.newpath)
+
+		if !reflect.DeepEqual(err, c.expectedError) {
+			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
+		}
+	}
 }
 
 func TestBackupCopy(t *testing.T) {
@@ -176,33 +214,33 @@ func (o *FakeOutputer) OutError(format string, v ...interface{}) {
 
 func TestNewLinker(t *testing.T) {
 	cases := []struct {
-		mkdirSymlinker *FakeMkdirSymlinker
+		os *FakeOS
 		srcAbs         string
 		destAbs        string
 		expectedError  error
 	}{
 		{
-			mkdirSymlinker: &FakeMkdirSymlinker{
-				&FakeDirMaker{MkdirAllError: nil},
-				&FakeSymlinker{SymlinkError: nil},
+			os: &FakeOS{
+				MkdirAllError: nil,
+				SymlinkError: nil,
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",
 			expectedError: nil,
 		},
 		{
-			mkdirSymlinker: &FakeMkdirSymlinker{
-				&FakeDirMaker{MkdirAllError: errors.New("Permission denied")},
-				&FakeSymlinker{SymlinkError: nil},
+			os: &FakeOS{
+				MkdirAllError: errors.New("Permission denied"),
+				SymlinkError: nil,
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",
 			expectedError: errors.New("Permission denied"),
 		},
 		{
-			mkdirSymlinker: &FakeMkdirSymlinker{
-				&FakeDirMaker{MkdirAllError: nil},
-				&FakeSymlinker{SymlinkError: errors.New("File exists")},
+			os: &FakeOS{
+				MkdirAllError: nil,
+				SymlinkError: errors.New("File exists"),
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",
@@ -211,7 +249,7 @@ func TestNewLinker(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.mkdirSymlinker)
+		linker := NewLinker(&FakeOutputer{}, c.os)
 
 		err := linker.SetSymlink(c.srcAbs, c.destAbs)
 		if !reflect.DeepEqual(err, c.expectedError) {
