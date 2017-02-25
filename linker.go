@@ -112,7 +112,8 @@ func backupCopy(filename, backupDir string) error {
 
 	outputer.OutVerbose("  → backup %s to %s", abs, backupPath)
 
-	err = Copy(filename, backupPath)
+	// TODO
+	err = Copy(osfs, filename, backupPath)
 	return err
 }
 

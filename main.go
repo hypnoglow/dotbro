@@ -14,7 +14,7 @@ var debugLogger DebugLogger
 var outputer Outputer
 
 var (
-	osfs       = new(OSFS)
+	osfs = new(OSFS)
 )
 
 func main() {
