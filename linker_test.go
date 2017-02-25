@@ -214,15 +214,15 @@ func (o *FakeOutputer) OutError(format string, v ...interface{}) {
 
 func TestNewLinker(t *testing.T) {
 	cases := []struct {
-		os *FakeOS
-		srcAbs         string
-		destAbs        string
-		expectedError  error
+		os            *FakeOS
+		srcAbs        string
+		destAbs       string
+		expectedError error
 	}{
 		{
 			os: &FakeOS{
 				MkdirAllError: nil,
-				SymlinkError: nil,
+				SymlinkError:  nil,
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",
@@ -231,7 +231,7 @@ func TestNewLinker(t *testing.T) {
 		{
 			os: &FakeOS{
 				MkdirAllError: errors.New("Permission denied"),
-				SymlinkError: nil,
+				SymlinkError:  nil,
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",
@@ -240,7 +240,7 @@ func TestNewLinker(t *testing.T) {
 		{
 			os: &FakeOS{
 				MkdirAllError: nil,
-				SymlinkError: errors.New("File exists"),
+				SymlinkError:  errors.New("File exists"),
 			},
 			srcAbs:        "/src/path",
 			destAbs:       "/dest/path",

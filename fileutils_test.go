@@ -11,15 +11,15 @@ import (
 
 func TestIsExists(t *testing.T) {
 	cases := []struct {
-		stater         *FakeStater
+		os             *FakeOS
 		name           string
 		expectedResult bool
 		expectedError  error
 	}{
 		{
-			stater: &FakeStater{
+			os: &FakeOS{
 				StatFileInfo:     nil, // does not matter
-				StatError:        errors.New("Permission denied"),
+				StatError: errors.New("Permission denied"),
 				IsNotExistResult: false,
 			},
 			name:           "/path/that/errors/on/stat",
@@ -27,7 +27,7 @@ func TestIsExists(t *testing.T) {
 			expectedError:  errors.New("Permission denied"),
 		},
 		{
-			stater: &FakeStater{
+			os: &FakeOS{
 				StatFileInfo:     nil, // does not matter
 				StatError:        errors.New("Not exists"),
 				IsNotExistResult: true,
@@ -37,7 +37,7 @@ func TestIsExists(t *testing.T) {
 			expectedError:  nil,
 		},
 		{
-			stater: &FakeStater{
+			os: &FakeOS{
 				StatFileInfo:     nil, // does not matter
 				StatError:        nil,
 				IsNotExistResult: false,
@@ -49,7 +49,7 @@ func TestIsExists(t *testing.T) {
 	}
 
 	for _, testcase := range cases {
-		exists, err := IsExists(testcase.stater, testcase.name)
+		exists, err := IsExists(testcase.os, testcase.name)
 		if exists != testcase.expectedResult {
 			t.Errorf("Expected %v but got %v\n", testcase.expectedResult, exists)
 		}

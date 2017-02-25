@@ -8,9 +8,9 @@ import (
 )
 
 // IsExists reports whether path exists (path may be a file or a directory).
-func IsExists(stater Stater, path string) (bool, error) {
-	_, err := stater.Stat(path)
-	if stater.IsNotExist(err) {
+func IsExists(osfs OS, path string) (bool, error) {
+	_, err := osfs.Stat(path)
+	if osfs.IsNotExist(err) {
 		return false, nil
 	}
 

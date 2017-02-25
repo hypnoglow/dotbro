@@ -14,10 +14,7 @@ var debugLogger DebugLogger
 var outputer Outputer
 
 var (
-	osStater         = new(OsStater)
-	osDirMaker       = new(OsDirMaker)
-	osMkdirSymlinker = new(OsMkdirSymlinker)
-	osfs             = new(OSFS)
+	osfs       = new(OSFS)
 )
 
 func main() {
@@ -95,7 +92,7 @@ func main() {
 func initLogger() {
 	var filename = os.ExpandEnv(logFilepath)
 
-	if err := osDirMaker.MkdirAll(filepath.Dir(filename), 0700); err != nil {
+	if err := osfs.MkdirAll(filepath.Dir(filename), 0700); err != nil {
 		outputer.OutWarn("Cannot use log file %s. Reason: %s", filename, err)
 		return
 	}
@@ -275,7 +272,7 @@ func installDotfile(src, dest string, linker Linker, config *Configuration, srcD
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
-	exists, err := IsExists(osStater, srcAbs)
+	exists, err := IsExists(osfs, srcAbs)
 	if err != nil {
 		outputer.OutError("Error processing source file %s: %s", src, err)
 		exit(1)
