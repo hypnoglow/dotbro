@@ -79,6 +79,14 @@ func main() {
 
 		outputer.OutInfo("\n%s was successfully added to your dotfiles!", Brown(filename))
 		exit(0)
+	case args["clean"]:
+		if err = cleanAction(config); err != nil {
+			outputer.OutError("%s", err)
+			exit(1)
+		}
+
+		outputer.OutInfo("\nCleaned!")
+		exit(0)
 	default:
 		// Default action: install
 		if err = installAction(config); err != nil {
@@ -152,10 +160,19 @@ func addAction(filename string, config *Configuration) error {
 	return nil
 }
 
+func cleanAction(config *Configuration) error {
+	cleaner := NewCleaner(&outputer, osfs)
+	if err := cleaner.CleanDeadSymlinks(config.Directories.Destination); err != nil {
+		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
+	}
+
+	return nil
+}
+
 func installAction(config *Configuration) error {
 	// Default action: install
-
-	err := cleanDeadSymlinks(config.Directories.Destination)
+	cleaner := NewCleaner(&outputer, osfs)
+	err := cleaner.CleanDeadSymlinks(config.Directories.Destination)
 	if err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}

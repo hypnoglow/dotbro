@@ -139,9 +139,9 @@ func TestCopyReal(t *testing.T) {
 					ModeValue: 0,
 				},
 				MkdirAllError: errors.New("Cannot create dir"),
-			}	,
-			src: "/path/to/source",
-			dest: "/path/to/dest",
+			},
+			src:           "/path/to/source",
+			dest:          "/path/to/dest",
 			expectedError: errors.New("Cannot create dir"),
 		},
 		{
