@@ -174,44 +174,6 @@ func TestMove(t *testing.T) {
 	}
 }
 
-func TestBackupCopy(t *testing.T) {
-
-	os.RemoveAll("/tmp/dotbro") // Cleanup
-
-	filename := "/tmp/dotbro/linker/TestBackupCopy/file"
-	backupDir := "/tmp/dotbro/linker/TestBackupCopy/backup"
-	if err := os.MkdirAll(path.Dir(filename), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filename, []byte("TestData"), 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	err := backupCopy(filename, backupDir)
-	assert.Empty(t, err)
-	filenameContent, _ := ioutil.ReadFile(filename)
-	backupContent, _ := ioutil.ReadFile(backupDir + "/file")
-	assert.Equal(t, filenameContent, backupContent)
-}
-
-type FakeOutputer struct{}
-
-func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutInfo(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutWarn(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutError(format string, v ...interface{}) {
-	return
-}
-
 func TestNewLinker(t *testing.T) {
 	cases := []struct {
 		os            *FakeOS

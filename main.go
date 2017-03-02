@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+
+	. "github.com/logrusorgru/aurora"
 )
 
 const logFilepath = "${HOME}/.dotbro/dotbro.log"
@@ -75,7 +77,7 @@ func main() {
 			exit(1)
 		}
 
-		outputer.OutInfo("`%s` was successfully added to your dotfiles!", filename)
+		outputer.OutInfo("\n%s was successfully added to your dotfiles!", Brown(filename))
 		exit(0)
 	default:
 		// Default action: install
@@ -84,7 +86,7 @@ func main() {
 			exit(1)
 		}
 
-		outputer.OutInfo("All done (─‿‿─)")
+		outputer.OutInfo("\nAll done (─‿‿─)")
 		exit(0)
 	}
 }
@@ -123,13 +125,14 @@ func addAction(filename string, config *Configuration) error {
 		return fmt.Errorf("Cannot add dir %s - directories are not supported yet.", filename)
 	}
 
-	outputer.OutVerbose("Adding file `%s` to dotfiles root `%s`", filename, config.Directories.Dotfiles)
+	outputer.OutVerbose("Adding file %s to dotfiles root %s", Brown(filename), Brown(config.Directories.Dotfiles))
 
 	// backup file
-	err = backupCopy(filename, config.Directories.Backup)
-	if err != nil {
+	backupPath := config.Directories.Backup + "/" + path.Base(filename)
+	if err = Copy(osfs, filename, backupPath); err != nil {
 		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
 	}
+	outputer.OutInfo("  %s backup %s to %s", Green("→"), Brown(filename), Brown(backupPath))
 
 	// Move file to dotfiles root
 	newPath := config.Directories.Dotfiles + "/" + path.Base(filename)

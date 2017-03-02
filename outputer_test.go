@@ -183,3 +183,21 @@ func TestOutputer_OutError(t *testing.T) {
 		}
 	}
 }
+
+type FakeOutputer struct{}
+
+func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {
+	return
+}
+
+func (o *FakeOutputer) OutInfo(format string, v ...interface{}) {
+	return
+}
+
+func (o *FakeOutputer) OutWarn(format string, v ...interface{}) {
+	return
+}
+
+func (o *FakeOutputer) OutError(format string, v ...interface{}) {
+	return
+}

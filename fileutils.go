@@ -21,6 +21,7 @@ func IsExists(osfs OS, path string) (bool, error) {
 }
 
 // Copy copies a file from src to dst.
+// src and dest can be either absolute or relative paths.
 func Copy(osfs OS, src, dst string) error {
 	sfi, err := osfs.Lstat(src)
 	if err != nil {
@@ -65,8 +66,7 @@ func copyFileContents(osfs OS, src, dst string) (err error) {
 		}
 	}()
 
-	err = osfs.MkdirAll(path.Dir(dst), 0700)
-	if err != nil {
+	if err = osfs.MkdirAll(path.Dir(dst), 0700); err != nil {
 		return err
 	}
 
