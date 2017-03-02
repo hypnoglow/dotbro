@@ -13,12 +13,15 @@ type FakeOS struct {
 	CreateError      error
 	MkdirAllError    error
 	SymlinkError     error
+	ReadlinkResult   string
+	ReadlinkError    error
 	StatFileInfo     os.FileInfo
 	StatError        error
 	LstatFileInfo    os.FileInfo
 	LstatError       error
 	IsNotExistResult bool
 	RenameError      error
+	RemoveError      error
 }
 
 func (f *FakeOS) Open(name string) (*os.File, error) {
@@ -37,6 +40,10 @@ func (f *FakeOS) Symlink(oldname, newname string) error {
 	return f.SymlinkError
 }
 
+func (f *FakeOS) Readlink(name string) (string, error) {
+	return f.ReadlinkResult, f.ReadlinkError
+}
+
 func (f *FakeOS) Stat(name string) (os.FileInfo, error) {
 	return f.StatFileInfo, f.StatError
 }
@@ -51,6 +58,10 @@ func (f *FakeOS) IsNotExist(err error) bool {
 
 func (f *FakeOS) Rename(oldname, newname string) error {
 	return f.RenameError
+}
+
+func (f *FakeOS) Remove(name string) error {
+	return f.RemoveError
 }
 
 // FakeFileInfo is a os.FileInfo mock.

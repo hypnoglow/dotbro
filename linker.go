@@ -57,10 +57,10 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 	return nil
 }
 
-// needSymlink reports whether source file needs to be symlinked to destination path.
-func needSymlink(src, dest string) (bool, error) {
-	fi, err := os.Lstat(dest)
-	if os.IsNotExist(err) {
+// NeedSymlink reports whether source file needs to be symlinked to destination path.
+func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
+	fi, err := l.os.Lstat(dest)
+	if l.os.IsNotExist(err) {
 		return true, nil
 	}
 	if err != nil {
@@ -71,32 +71,30 @@ func needSymlink(src, dest string) (bool, error) {
 		return true, nil
 	}
 
-	target, err := os.Readlink(dest)
+	target, err := l.os.Readlink(dest)
 	if err != nil {
 		return false, err
 	}
 
 	if target == src {
-		outputer.OutVerbose("  %s %s is correct symlink", Green("✓"), Brown(dest))
+		l.outputer.OutVerbose("  %s %s is correct symlink", Green("✓"), Brown(dest))
 		return false, nil
 	}
 
 	// here dest is a wrong symlink
 
-	// todo: if dry-run, just print
-	err = os.Remove(dest)
-	if err != nil {
+	if err = l.os.Remove(dest); err != nil {
 		return false, err
 	}
-	outputer.OutInfo("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
+	l.outputer.OutInfo("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
 
 	return true, nil
 }
 
-// needBackup reports whether destination path needs to be backed up.
-func needBackup(dest string) (bool, error) {
-	fi, err := os.Lstat(dest)
-	if os.IsNotExist(err) {
+// NeedBackup reports whether destination path needs to be backed up.
+func (l *Linker) NeedBackup(dest string) (bool, error) {
+	fi, err := l.os.Lstat(dest)
+	if l.os.IsNotExist(err) {
 		return false, nil
 	}
 	if err != nil {

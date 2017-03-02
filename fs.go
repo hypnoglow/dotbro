@@ -13,12 +13,14 @@ type OS interface {
 	MkdirAll(path string, perm os.FileMode) error
 
 	Symlink(oldname, newname string) error
+	Readlink(name string) (string, error)
 
 	Stat(name string) (os.FileInfo, error)
 	Lstat(name string) (os.FileInfo, error)
 	IsNotExist(err error) bool
 
 	Rename(oldpath, newpath string) error
+	Remove(name string) error
 }
 
 // Actual implementation of interface using os package.
@@ -41,6 +43,10 @@ func (f *OSFS) Symlink(oldname, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
+func (f *OSFS) Readlink(name string) (string, error) {
+	return os.Readlink(name)
+}
+
 func (f *OSFS) Stat(name string) (os.FileInfo, error) {
 	return os.Stat(name)
 }
@@ -55,4 +61,8 @@ func (f *OSFS) IsNotExist(err error) bool {
 
 func (f *OSFS) Rename(oldpath, newpath string) error {
 	return os.Rename(oldpath, newpath)
+}
+
+func (f *OSFS) Remove(name string) error {
+	return os.Remove(name)
 }
