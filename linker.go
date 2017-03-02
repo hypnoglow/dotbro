@@ -36,7 +36,7 @@ func (l *Linker) Move(oldpath, newpath string) error {
 		return err
 	}
 
-	l.outputer.OutVerbose("  %s backup %s to %s", Green("→"), oldpath, newpath)
+	l.outputer.OutVerbose("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath))
 	err = l.os.Rename(oldpath, newpath)
 	return err
 }

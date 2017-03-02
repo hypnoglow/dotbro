@@ -1,4 +1,4 @@
-// This file provides an interface and mocks to os functions used in dotbro.
+// This file provides an interface to os functions used in dotbro.
 
 package main
 

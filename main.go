@@ -13,15 +13,14 @@ import (
 const logFilepath = "${HOME}/.dotbro/dotbro.log"
 
 var debugLogger DebugLogger
-var outputer Outputer
 
 var (
 	osfs = new(OSFS)
 )
 
 func main() {
-	outputer = NewOutputer(OutputerModeNormal, os.Stdout, debugLogger)
-	initLogger()
+	var outputer = NewOutputer(OutputerModeNormal, os.Stdout, debugLogger)
+	initLogger(&outputer)
 	outputer.Logger = debugLogger
 
 	debugLogger.Write("Start.")
@@ -47,7 +46,7 @@ func main() {
 
 	// Process config
 
-	configPath := getConfigPath(args["--config"])
+	configPath := getConfigPath(args["--config"], &outputer)
 	debugLogger.Write("Parsing config file %s", configPath)
 	config, err := NewConfiguration(configPath)
 	if err != nil {
@@ -63,16 +62,16 @@ func main() {
 		exit(1)
 	}
 
-	outputer.OutVerbose("Dotfiles root: %s", config.Directories.Dotfiles)
-	outputer.OutVerbose("Dotfiles src: %s", config.Directories.Sources)
-	outputer.OutVerbose("Destination dir: %s", config.Directories.Destination)
+	outputer.OutVerbose("Dotfiles root: %s", Brown(config.Directories.Dotfiles))
+	outputer.OutVerbose("Dotfiles src: %s", Brown(config.Directories.Sources))
+	outputer.OutVerbose("Destination dir: %s", Brown(config.Directories.Destination))
 
 	// Select action
 
 	switch {
 	case args["add"]:
 		filename := args["<filename>"].(string)
-		if err = addAction(filename, config); err != nil {
+		if err = addAction(filename, config, &outputer); err != nil {
 			outputer.OutError("%s", err)
 			exit(1)
 		}
@@ -80,7 +79,7 @@ func main() {
 		outputer.OutInfo("\n%s was successfully added to your dotfiles!", Brown(filename))
 		exit(0)
 	case args["clean"]:
-		if err = cleanAction(config); err != nil {
+		if err = cleanAction(config, &outputer); err != nil {
 			outputer.OutError("%s", err)
 			exit(1)
 		}
@@ -89,7 +88,7 @@ func main() {
 		exit(0)
 	default:
 		// Default action: install
-		if err = installAction(config); err != nil {
+		if err = installAction(config, &outputer); err != nil {
 			outputer.OutError("%s", err)
 			exit(1)
 		}
@@ -99,7 +98,7 @@ func main() {
 	}
 }
 
-func initLogger() {
+func initLogger(outputer IOutputer) {
 	var filename = os.ExpandEnv(logFilepath)
 
 	if err := osfs.MkdirAll(filepath.Dir(filename), 0700); err != nil {
@@ -116,7 +115,7 @@ func initLogger() {
 	debugLogger = NewDebugLogger(log.New(f, "", log.Ldate|log.Ltime))
 }
 
-func addAction(filename string, config *Configuration) error {
+func addAction(filename string, config *Configuration, outputer IOutputer) error {
 	fileInfo, err := os.Lstat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -148,7 +147,7 @@ func addAction(filename string, config *Configuration) error {
 		return err
 	}
 
-	linker := NewLinker(&outputer, osfs)
+	linker := NewLinker(outputer, osfs)
 
 	// Add a symlink to the moved file
 	if err = linker.SetSymlink(newPath, filename); err != nil {
@@ -160,8 +159,8 @@ func addAction(filename string, config *Configuration) error {
 	return nil
 }
 
-func cleanAction(config *Configuration) error {
-	cleaner := NewCleaner(&outputer, osfs)
+func cleanAction(config *Configuration, outputer IOutputer) error {
+	cleaner := NewCleaner(outputer, osfs)
 	if err := cleaner.CleanDeadSymlinks(config.Directories.Destination); err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
@@ -169,9 +168,9 @@ func cleanAction(config *Configuration) error {
 	return nil
 }
 
-func installAction(config *Configuration) error {
+func installAction(config *Configuration, outputer IOutputer) error {
 	// Default action: install
-	cleaner := NewCleaner(&outputer, osfs)
+	cleaner := NewCleaner(outputer, osfs)
 	err := cleaner.CleanDeadSymlinks(config.Directories.Destination)
 	if err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
@@ -188,18 +187,18 @@ func installAction(config *Configuration) error {
 		srcDirAbs += "/" + config.Directories.Sources
 	}
 
-	mapping := getMapping(config, srcDirAbs)
-	linker := NewLinker(&outputer, osfs)
+	mapping := getMapping(config, srcDirAbs, outputer)
+	linker := NewLinker(outputer, osfs)
 
 	outputer.OutInfo("Installing dotfiles...")
 	for src, dst := range mapping {
-		installDotfile(src, dst, linker, config, srcDirAbs)
+		installDotfile(src, dst, linker, config, srcDirAbs, outputer)
 	}
 
 	return nil
 }
 
-func getConfigPath(configArg interface{}) string {
+func getConfigPath(configArg interface{}, outputer IOutputer) string {
 	var configPath string
 	if configArg != nil {
 		configPath = configArg.(string)
@@ -220,7 +219,7 @@ func getConfigPath(configArg interface{}) string {
 			exit(1)
 		}
 
-		outputer.OutVerbose("Got config path from file `%s`", RCFilepath)
+		outputer.OutVerbose("Got config path from file %s", Brown(RCFilepath))
 		return rc.Config.Path
 	}
 
@@ -238,11 +237,11 @@ func getConfigPath(configArg interface{}) string {
 		exit(1)
 	}
 
-	outputer.OutVerbose("Saved config path to file `%s`", RCFilepath)
+	outputer.OutVerbose("Saved config path to file %s", Brown(RCFilepath))
 	return rc.Config.Path
 }
 
-func getMapping(config *Configuration, srcDirAbs string) map[string]string {
+func getMapping(config *Configuration, srcDirAbs string, outputer IOutputer) map[string]string {
 	mapping := make(map[string]string)
 
 	if len(config.Mapping) == 0 {
@@ -288,7 +287,7 @@ func getMapping(config *Configuration, srcDirAbs string) map[string]string {
 	return mapping
 }
 
-func installDotfile(src, dest string, linker Linker, config *Configuration, srcDirAbs string) {
+func installDotfile(src, dest string, linker Linker, config *Configuration, srcDirAbs string, outputer IOutputer) {
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
