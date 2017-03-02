@@ -3,13 +3,26 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"path"
 )
 
+// IsExists reports whether path exists (path may be a file or a directory).
+func IsExists(osfs OS, path string) (bool, error) {
+	_, err := osfs.Stat(path)
+	if osfs.IsNotExist(err) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // Copy copies a file from src to dst.
-func Copy(src, dst string) error {
-	sfi, err := os.Lstat(src)
+func Copy(osfs OS, src, dst string) error {
+	sfi, err := osfs.Lstat(src)
 	if err != nil {
 		return err
 	}
@@ -18,9 +31,9 @@ func Copy(src, dst string) error {
 		return fmt.Errorf("Non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
 	}
 
-	dfi, err := os.Stat(dst)
+	dfi, err := osfs.Stat(dst)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !osfs.IsNotExist(err) {
 			return err
 		}
 		// file not exists - do not do anything
@@ -31,7 +44,7 @@ func Copy(src, dst string) error {
 		}
 	}
 
-	err = copyFileContents(src, dst)
+	err = copyFileContents(osfs, src, dst)
 	return err
 }
 
@@ -39,8 +52,8 @@ func Copy(src, dst string) error {
 // by dst. The file will be created if it does not already exist. If the
 // destination file exists, all it's contents will be replaced by the contents
 // of the source file.
-func copyFileContents(src, dst string) (err error) {
-	in, err := os.Open(src)
+func copyFileContents(osfs OS, src, dst string) (err error) {
+	in, err := osfs.Open(src)
 	if err != nil {
 		return
 	}
@@ -52,12 +65,12 @@ func copyFileContents(src, dst string) (err error) {
 		}
 	}()
 
-	err = os.MkdirAll(path.Dir(dst), 0700)
+	err = osfs.MkdirAll(path.Dir(dst), 0700)
 	if err != nil {
 		return err
 	}
 
-	out, err := os.Create(dst)
+	out, err := osfs.Create(dst)
 	if err != nil {
 		return
 	}

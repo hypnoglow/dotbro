@@ -1,10 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 )
+
+type Linker struct {
+	outputer IOutputer
+	os       OS
+}
+
+func NewLinker(outputer IOutputer, os OS) Linker {
+	return Linker{
+		outputer: outputer,
+		os:       os,
+	}
+}
 
 // needSymlink reports whether source file needs to be symlinked to destination path.
 func needSymlink(src, dest string) (bool, error) {
@@ -26,7 +39,7 @@ func needSymlink(src, dest string) (bool, error) {
 	}
 
 	if target == src {
-		outVerbose("  ✓ %s is correct symlink", dest)
+		outputer.OutVerbose("  ✓ %s is correct symlink", dest)
 		return false, nil
 	}
 
@@ -37,7 +50,7 @@ func needSymlink(src, dest string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	outInfo("  ✓ delete wrong symlink %s", dest)
+	outputer.OutInfo("  ✓ delete wrong symlink %s", dest)
 
 	return true, nil
 }
@@ -59,19 +72,26 @@ func needBackup(dest string) (bool, error) {
 	return false, nil
 }
 
-// backup copies existing destination file to backup dir.
-func backup(dest string, destAbs string, backupDir string) error {
+// Move moves oldpath to newpath, creating target directories if need.
+func (l *Linker) Move(oldpath, newpath string) error {
 	// todo: if dry-run, just print
 
-	dir := path.Dir(backupDir + "/" + dest)
-	err := os.MkdirAll(dir, 0700)
+	// check if destination file exists
+	exists, err := IsExists(l.os, oldpath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("File %s not exists", oldpath)
+	}
+
+	err = l.os.MkdirAll(path.Dir(newpath), 0700)
 	if err != nil {
 		return err
 	}
 
-	backupPath := backupDir + "/" + dest
-	outVerbose("  → backup %s to %s", destAbs, backupPath)
-	err = os.Rename(destAbs, backupPath)
+	l.outputer.OutVerbose("  → backup %s to %s", oldpath, newpath)
+	err = l.os.Rename(oldpath, newpath)
 	return err
 }
 
@@ -90,29 +110,25 @@ func backupCopy(filename, backupDir string) error {
 		return err
 	}
 
-	outVerbose("  → backup %s to %s", abs, backupPath)
+	outputer.OutVerbose("  → backup %s to %s", abs, backupPath)
 
-	err = Copy(filename, backupPath)
+	// TODO
+	err = Copy(osfs, filename, backupPath)
 	return err
 }
 
-// setSymlink symlinks scrAbs to destAbs
-func setSymlink(srcAbs string, destAbs string) error {
-	var err error
-
-	// todo: if dry-run, just print
+// SetSymlink symlinks scrAbs to destAbs.
+func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 
 	dir := path.Dir(destAbs)
-	err = os.MkdirAll(dir, 0700)
-	if err != nil {
+	if err := l.os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
-	err = os.Symlink(srcAbs, destAbs)
-	if err != nil {
+	if err := l.os.Symlink(srcAbs, destAbs); err != nil {
 		return err
 	}
 
-	outInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
+	l.outputer.OutInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
 	return nil
 }

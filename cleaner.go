@@ -54,10 +54,10 @@ func cleanFiles(dirPath string, files []os.FileInfo) error {
 
 		if !removedAny {
 			removedAny = true
-			outInfo("Cleaning dead symlinks...")
+			outputer.OutInfo("Cleaning dead symlinks...")
 		}
 
-		outInfo("  ✓ %s has been removed (broken symlink)", filepath)
+		outputer.OutInfo("  ✓ %s has been removed (broken symlink)", filepath)
 	}
 
 	return nil

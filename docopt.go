@@ -4,7 +4,8 @@ import "github.com/docopt/docopt-go"
 
 const version = "0.2.0"
 
-func parseArguments() (map[string]interface{}, error) {
+// ParseArguments parses arguments, that were passed to the dotbro, by docopt.
+func ParseArguments(argv []string) (map[string]interface{}, error) {
 	usage := `dotbro - simple yet effective dotfiles manager.
 
 Usage:
@@ -27,5 +28,5 @@ Other options:
   -V --version            Show version.
 `
 
-	return docopt.Parse(usage, nil, true, "dotbro "+version, false)
+	return docopt.Parse(usage, argv, true, "dotbro "+version, false)
 }
