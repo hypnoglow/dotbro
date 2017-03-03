@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
+
+	. "github.com/logrusorgru/aurora"
 )
 
 type Linker struct {
@@ -19,63 +20,8 @@ func NewLinker(outputer IOutputer, os OS) Linker {
 	}
 }
 
-// needSymlink reports whether source file needs to be symlinked to destination path.
-func needSymlink(src, dest string) (bool, error) {
-	fi, err := os.Lstat(dest)
-	if os.IsNotExist(err) {
-		return true, nil
-	}
-	if err != nil {
-		return false, err
-	}
-
-	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
-		return true, nil
-	}
-
-	target, err := os.Readlink(dest)
-	if err != nil {
-		return false, err
-	}
-
-	if target == src {
-		outputer.OutVerbose("  ✓ %s is correct symlink", dest)
-		return false, nil
-	}
-
-	// here dest is a wrong symlink
-
-	// todo: if dry-run, just print
-	err = os.Remove(dest)
-	if err != nil {
-		return false, err
-	}
-	outputer.OutInfo("  ✓ delete wrong symlink %s", dest)
-
-	return true, nil
-}
-
-// needBackup reports whether destination path needs to be backed up.
-func needBackup(dest string) (bool, error) {
-	fi, err := os.Lstat(dest)
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-
-	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
-		return true, nil
-	}
-
-	return false, nil
-}
-
 // Move moves oldpath to newpath, creating target directories if need.
 func (l *Linker) Move(oldpath, newpath string) error {
-	// todo: if dry-run, just print
-
 	// check if destination file exists
 	exists, err := IsExists(l.os, oldpath)
 	if err != nil {
@@ -90,30 +36,8 @@ func (l *Linker) Move(oldpath, newpath string) error {
 		return err
 	}
 
-	l.outputer.OutVerbose("  → backup %s to %s", oldpath, newpath)
+	l.outputer.OutVerbose("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath))
 	err = l.os.Rename(oldpath, newpath)
-	return err
-}
-
-func backupCopy(filename, backupDir string) error {
-	rel := path.Base(filename)
-	abs, err := filepath.Abs(filename)
-	if err != nil {
-		return err
-	}
-
-	backupPath := backupDir + "/" + rel
-
-	// Create subdirectories, if need
-	dir := path.Dir(backupPath)
-	if err = os.MkdirAll(dir, 0700); err != nil {
-		return err
-	}
-
-	outputer.OutVerbose("  → backup %s to %s", abs, backupPath)
-
-	// TODO
-	err = Copy(osfs, filename, backupPath)
 	return err
 }
 
@@ -129,6 +53,57 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 		return err
 	}
 
-	l.outputer.OutInfo("  ✓ set symlink %s -> %s", srcAbs, destAbs)
+	l.outputer.OutInfo("  %s set symlink %s -> %s", Green("+"), Brown(srcAbs), Brown(destAbs))
 	return nil
+}
+
+// NeedSymlink reports whether source file needs to be symlinked to destination path.
+func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
+	fi, err := l.os.Lstat(dest)
+	if l.os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		return true, nil
+	}
+
+	target, err := l.os.Readlink(dest)
+	if err != nil {
+		return false, err
+	}
+
+	if target == src {
+		l.outputer.OutVerbose("  %s %s is correct symlink", Green("✓"), Brown(dest))
+		return false, nil
+	}
+
+	// here dest is a wrong symlink
+
+	if err = l.os.Remove(dest); err != nil {
+		return false, err
+	}
+	l.outputer.OutInfo("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
+
+	return true, nil
+}
+
+// NeedBackup reports whether destination path needs to be backed up.
+func (l *Linker) NeedBackup(dest string) (bool, error) {
+	fi, err := l.os.Lstat(dest)
+	if l.os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if fi.Mode()&os.ModeSymlink != os.ModeSymlink {
+		return true, nil
+	}
+
+	return false, nil
 }

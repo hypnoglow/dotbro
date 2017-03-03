@@ -58,7 +58,21 @@ func TestIsExists(t *testing.T) {
 	}
 }
 
-func TestCopyReal(t *testing.T) {
+func TestCopy(t *testing.T) {
+	// dirty hacks
+	testLonelyFile, err := os.Create("/tmp/test_in_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testInFile, err := os.Create("/tmp/test_in_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testOutFile, err := os.Create("/tmp/test_out_file")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cases := []struct {
 		os            *FakeOS
 		src           string
@@ -138,10 +152,11 @@ func TestCopyReal(t *testing.T) {
 					NameValue: "dest",
 					ModeValue: 0,
 				},
+				OpenResult:    os.Stdin, // just in case
 				MkdirAllError: errors.New("Cannot create dir"),
-			}	,
-			src: "/path/to/source",
-			dest: "/path/to/dest",
+			},
+			src:           "/path/to/source",
+			dest:          "/path/to/dest",
 			expectedError: errors.New("Cannot create dir"),
 		},
 		{
@@ -154,11 +169,47 @@ func TestCopyReal(t *testing.T) {
 					NameValue: "destfile",
 					ModeValue: 0,
 				},
+				OpenResult:  os.Stdin, // just in case
 				CreateError: errors.New("Cannot create file destfile"),
 			},
 			src:           "/path/to/sourcefile",
 			dest:          "/path/to/destfile",
 			expectedError: errors.New("Cannot create file destfile"),
+		},
+		{
+			// no out file
+			os: &FakeOS{
+				LstatFileInfo: &FakeFileInfo{
+					NameValue: "sourcefile",
+					ModeValue: 0,
+				},
+				StatFileInfo: &FakeFileInfo{
+					NameValue: "destfile",
+					ModeValue: 0,
+				},
+				OpenResult: testLonelyFile,
+			},
+			src:           "/path/to/sourcefile",
+			dest:          "/path/to/destfile",
+			expectedError: errors.New("invalid argument"),
+		},
+		{
+			// all is ok
+			os: &FakeOS{
+				LstatFileInfo: &FakeFileInfo{
+					NameValue: "sourcefile",
+					ModeValue: 0,
+				},
+				StatFileInfo: &FakeFileInfo{
+					NameValue: "destfile",
+					ModeValue: 0,
+				},
+				OpenResult:   testInFile,
+				CreateResult: testOutFile,
+			},
+			src:           "/path/to/sourcefile",
+			dest:          "/path/to/destfile",
+			expectedError: nil,
 		},
 	}
 

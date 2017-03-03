@@ -3,10 +3,24 @@ package main
 import (
 	"fmt"
 	"os"
+
+	. "github.com/logrusorgru/aurora"
 )
 
-func cleanDeadSymlinks(dirPath string) error {
-	dir, err := os.Open(dirPath)
+type Cleaner struct {
+	outputer IOutputer
+	os       OS
+}
+
+func NewCleaner(outputer IOutputer, os OS) Cleaner {
+	return Cleaner{
+		outputer: outputer,
+		os:       os,
+	}
+}
+
+func (c *Cleaner) CleanDeadSymlinks(dirPath string) error {
+	dir, err := c.os.Open(dirPath)
 	if err != nil {
 		return err
 	}
@@ -32,10 +46,11 @@ func cleanDeadSymlinks(dirPath string) error {
 		return err
 	}
 
-	return cleanFiles(dirPath, files)
+	return c.cleanFiles(dirPath, files)
 }
 
-func cleanFiles(dirPath string, files []os.FileInfo) error {
+// Checks each file, if it is a bad symlink - removes it.
+func (c *Cleaner) cleanFiles(dirPath string, files []os.FileInfo) error {
 	removedAny := false
 	for _, fileInfo := range files {
 		if fileInfo.Mode()&os.ModeSymlink != os.ModeSymlink {
@@ -43,45 +58,29 @@ func cleanFiles(dirPath string, files []os.FileInfo) error {
 		}
 
 		filepath := dirPath + "/" + fileInfo.Name()
-		removed, err := checkLinkIfBadRemove(filepath)
-		if err != nil {
+		_, err := c.os.Stat(filepath)
+		if err == nil {
+			// symlink is correct
+			continue
+		}
+
+		if !os.IsNotExist(err) {
 			return err
 		}
 
-		if !removed {
-			continue
+		// file not exists => bad symlink, remove it
+
+		if err := c.os.Remove(filepath); err != nil {
+			return err
 		}
 
 		if !removedAny {
 			removedAny = true
-			outputer.OutInfo("Cleaning dead symlinks...")
+			c.outputer.OutInfo("Cleaning dead symlinks...")
 		}
 
-		outputer.OutInfo("  ✓ %s has been removed (broken symlink)", filepath)
+		c.outputer.OutInfo("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath))
 	}
 
 	return nil
-}
-
-func checkLinkIfBadRemove(filepath string) (bool, error) {
-	target, err := os.Readlink(filepath)
-	if err != nil {
-		return false, err
-	}
-
-	_, err = os.Stat(target)
-	if err == nil {
-		// File is ok, no need to remove.
-		return false, nil
-	}
-
-	if !os.IsNotExist(err) {
-		return false, err
-	}
-
-	if err := os.Remove(filepath); err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
