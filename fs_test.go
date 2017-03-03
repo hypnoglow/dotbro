@@ -1,13 +1,14 @@
 package main
 
 import (
+	//"io"
 	"os"
 	"time"
 )
 
 // FakeOS is a fake implementation of OS interface.
 type FakeOS struct {
-	OpenResult       *os.File
+	OpenResult       File
 	OpenError        error
 	CreateResult     *os.File
 	CreateError      error
@@ -24,7 +25,7 @@ type FakeOS struct {
 	RemoveError      error
 }
 
-func (f *FakeOS) Open(name string) (*os.File, error) {
+func (f *FakeOS) Open(name string) (File, error) {
 	return f.OpenResult, f.OpenError
 }
 
@@ -64,11 +65,39 @@ func (f *FakeOS) Remove(name string) error {
 	return f.RemoveError
 }
 
+// FakeFile is kinda a os.File mock.
+type FakeFile struct {
+	CloseError    error
+	StatResult    os.FileInfo
+	StatError     error
+	ReaddirResult []os.FileInfo
+	ReaddirError  error
+	ReadResult    int
+	ReadError     error
+}
+
+func (f *FakeFile) Close() error {
+	return f.CloseError
+}
+
+func (f *FakeFile) Stat() (os.FileInfo, error) {
+	return f.StatResult, f.StatError
+}
+
+func (f *FakeFile) Readdir(n int) ([]os.FileInfo, error) {
+	return f.ReaddirResult, f.ReaddirError
+}
+
+func (f *FakeFile) Read(p []byte) (n int, err error) {
+	return f.ReadResult, f.ReadError
+}
+
 // FakeFileInfo is a os.FileInfo mock.
 type FakeFileInfo struct {
-	NameValue string
-	SizeValue int64
-	ModeValue os.FileMode
+	NameValue  string
+	SizeValue  int64
+	ModeValue  os.FileMode
+	IsDirValue bool
 }
 
 func (f *FakeFileInfo) Name() string {
@@ -88,7 +117,7 @@ func (f *FakeFileInfo) ModTime() time.Time {
 }
 
 func (f *FakeFileInfo) IsDir() bool {
-	return false
+	return f.IsDirValue
 }
 
 func (f *FakeFileInfo) Sys() interface{} {

@@ -7,7 +7,7 @@ import "os"
 // Interfaces
 
 type OS interface {
-	Open(name string) (*os.File, error)
+	Open(name string) (File, error)
 	Create(name string) (*os.File, error)
 
 	MkdirAll(path string, perm os.FileMode) error
@@ -23,11 +23,18 @@ type OS interface {
 	Remove(name string) error
 }
 
+type File interface {
+	Close() error
+	Stat() (os.FileInfo, error)
+	Readdir(n int) ([]os.FileInfo, error)
+	Read(p []byte) (n int, err error)
+}
+
 // Actual implementation of interface using os package.
 
 type OSFS struct{}
 
-func (f *OSFS) Open(name string) (*os.File, error) {
+func (f *OSFS) Open(name string) (File, error) {
 	return os.Open(name)
 }
 
