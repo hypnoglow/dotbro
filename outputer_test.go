@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"os"
 	"testing"
+
+	. "github.com/logrusorgru/aurora"
+	"fmt"
 )
 
 type FakeLogWriterForOutputer struct{}
@@ -111,19 +114,19 @@ func TestOutputer_OutWarn(t *testing.T) {
 			mode:     OutputerModeVerbose,
 			format:   "This is a sample warn output that will be shown in %s mode.",
 			argument: "verbose",
-			expected: "WARN: This is a sample warn output that will be shown in verbose mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample warn output that will be shown in verbose mode.\n", Brown("WARN")),
 		},
 		{
 			mode:     OutputerModeNormal,
 			format:   "This is a sample warn output that will be shown in %s mode.",
 			argument: "normal",
-			expected: "WARN: This is a sample warn output that will be shown in normal mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample warn output that will be shown in normal mode.\n", Brown("WARN")),
 		},
 		{
 			mode:     OutputerModeQuiet,
 			format:   "This is a sample warn output that will be shown in %s mode.",
 			argument: "quiet",
-			expected: "WARN: This is a sample warn output that will be shown in quiet mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample warn output that will be shown in quiet mode.\n", Brown("WARN")),
 		},
 	}
 
@@ -153,19 +156,19 @@ func TestOutputer_OutError(t *testing.T) {
 			mode:     OutputerModeVerbose,
 			format:   "This is a sample error output that will be shown in %s mode.",
 			argument: "verbose",
-			expected: "ERRO: This is a sample error output that will be shown in verbose mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample error output that will be shown in verbose mode.\n", Red("ERROR")),
 		},
 		{
 			mode:     OutputerModeNormal,
 			format:   "This is a sample error output that will be shown in %s mode.",
 			argument: "normal",
-			expected: "ERRO: This is a sample error output that will be shown in normal mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample error output that will be shown in normal mode.\n", Red("ERROR")),
 		},
 		{
 			mode:     OutputerModeQuiet,
 			format:   "This is a sample error output that will be shown in %s mode.",
 			argument: "quiet",
-			expected: "ERRO: This is a sample error output that will be shown in quiet mode.\n",
+			expected: fmt.Sprintf("%s: This is a sample error output that will be shown in quiet mode.\n", Red("ERROR")),
 		},
 	}
 

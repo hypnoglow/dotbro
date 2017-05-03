@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io"
+
+	. "github.com/logrusorgru/aurora"
 )
 
 type OutputerMode string
@@ -64,19 +66,15 @@ func (o *Outputer) OutInfo(format string, v ...interface{}) {
 
 // OutWarn prints warning message to stdout. TODO
 func (o *Outputer) OutWarn(format string, v ...interface{}) {
-	msg := fmt.Sprintf("WARN: %s", fmt.Sprintf(format, v...))
+	o.Logger.Write(fmt.Sprintf("WARN: %s", fmt.Sprintf(format, v...)))
 
-	o.Logger.Write(msg)
-
-	fmt.Fprintln(o.Output, msg)
+	fmt.Fprintln(o.Output, fmt.Sprintf("%s: %s", Brown("WARN"), fmt.Sprintf(format, v...)))
 }
 
 // OutError prints error message to stdout.
 func (o *Outputer) OutError(format string, v ...interface{}) {
-	msg := fmt.Sprintf("ERRO: %s", fmt.Sprintf(format, v...))
-
-	o.Logger.Write(msg)
+	o.Logger.Write(fmt.Sprintf("ERROR: %s", fmt.Sprintf(format, v...)))
 
 	// TODO: write to stderr
-	fmt.Fprintln(o.Output, msg)
+	fmt.Fprintln(o.Output, fmt.Sprintf("%s: %s", Red("ERROR"), fmt.Sprintf(format, v...)))
 }

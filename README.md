@@ -7,11 +7,25 @@
 
 Dotbro is a tool which helps you install and keep your dotfiles up to date.
 
-If you don't have your dotfiles repository yet, it's time to [create it](https://medium.com/@webprolific/getting-started-with-dotfiles-43c3602fd789#.h8k6sagzb).
+## tl;dr
+
+Create simple [config](#Configuration). Run dotbro first time:
+    
+    dotbro --config path/to/your/config.toml
+    
+Next time just execute:
+
+    dotbro
+
+# Dotfiles? What?
+
+Read about dotfiles on [GitHub page](https://dotfiles.github.io/).
+I think [this article](https://medium.com/@webprolific/getting-started-with-dotfiles-43c3602fd789#.h8k6sagzb) by Lars Kappert will give you enough understanding.
+So, if you don't have your dotfiles repository yet, it's time to create it. Next, read further to explore an easy way to manage your dotfiles. 
 
 # Motivation
 
-Dotfiles are generally stored is VCS and symlinked from repo directory to your `$HOME` - this is one of the best patterns because you can track changes easily and commit them to your dotfiles repo. However, this pattern does not offer you any way to install your dotfiles, so often people end up writing their own script e.g. in bash, which is not good for long-term purposes (I know that because I had one).
+Dotfiles are generally stored in VCS and symlinked from repo directory to your `$HOME` - this is one of the best patterns because you can track changes easily and commit them to your dotfiles repo. However, this pattern does not offer you any way to install your dotfiles, so often people end up writing their own script e.g. in bash, which is not good for long-term purposes (I know that because I had one).
 
 This tool was made to deal with dotfiles installation, so you don't waste your time writing your install scripts and focus only on your dotfiles themselves.
 
@@ -22,6 +36,10 @@ Dotbro takes on the routine. The main task - installing your dotfiles in one com
 #### Simple configuration file
 
 All you need is simple [configuration file](#configuration) in JSON or TOML format.
+
+The other benefit is you do not need any special tooling if you use multiple different operation systems, e.g Linux and OS X.
+You can use one single dotfiles repository with multiple dotbro's configuration files inside - one for each OS.
+What can be easier?
 
 #### Clear mapping
 

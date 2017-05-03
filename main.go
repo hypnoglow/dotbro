@@ -50,7 +50,8 @@ func main() {
 	debugLogger.Write("Parsing config file %s", configPath)
 	config, err := NewConfiguration(configPath)
 	if err != nil {
-		outputer.OutError("Error reading configuration from file %s: %s", configPath, err)
+		outputer.OutError("Cannot read configuration from file %s : %s.\n", configPath, err)
+		outputer.OutInfo("%s: Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", Magenta("TIP"))
 		exit(1)
 	}
 
