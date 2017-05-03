@@ -6,20 +6,6 @@ import (
 	"path"
 )
 
-// IsExists reports whether path exists (path may be a file or a directory).
-func IsExists(osfs OS, path string) (bool, error) {
-	_, err := osfs.Stat(path)
-	if osfs.IsNotExist(err) {
-		return false, nil
-	}
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // Copy copies a file from src to dst.
 // src and dest can be either absolute or relative paths.
 func Copy(osfs OS, src, dst string) error {

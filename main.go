@@ -292,15 +292,14 @@ func installDotfile(src, dest string, linker Linker, config *Configuration, srcD
 	srcAbs := srcDirAbs + "/" + src
 	destAbs := config.Directories.Destination + "/" + dest
 
-	exists, err := IsExists(osfs, srcAbs)
+	_, err := osfs.Stat(srcAbs)
+	if osfs.IsNotExist(err) {
+		outputer.OutWarn("Source file %s does not exist", srcAbs)
+		return
+	}
 	if err != nil {
 		outputer.OutError("Error processing source file %s: %s", src, err)
 		exit(1)
-	}
-
-	if !exists {
-		outputer.OutWarn("Source file %s does not exist", srcAbs)
-		return
 	}
 
 	needSymlink, err := linker.NeedSymlink(srcAbs, destAbs)

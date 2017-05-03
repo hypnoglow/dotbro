@@ -9,7 +9,7 @@ Dotbro is a tool which helps you install and keep your dotfiles up to date.
 
 ## tl;dr
 
-Create simple [config](#Configuration). Run dotbro first time:
+Create simple [config](#configuration). Run dotbro first time:
     
     dotbro --config path/to/your/config.toml
     

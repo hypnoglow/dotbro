@@ -7,57 +7,6 @@ import (
 	"testing"
 )
 
-func TestIsExists(t *testing.T) {
-	cases := []struct {
-		os             *FakeOS
-		name           string
-		expectedResult bool
-		expectedError  error
-	}{
-		{
-			os: &FakeOS{
-				StatFileInfo:     nil, // does not matter
-				StatError:        errors.New("Permission denied"),
-				IsNotExistResult: false,
-			},
-			name:           "/path/that/errors/on/stat",
-			expectedResult: false,
-			expectedError:  errors.New("Permission denied"),
-		},
-		{
-			os: &FakeOS{
-				StatFileInfo:     nil, // does not matter
-				StatError:        errors.New("Not exists"),
-				IsNotExistResult: true,
-			},
-			name:           "/path/that/exists",
-			expectedResult: false,
-			expectedError:  nil,
-		},
-		{
-			os: &FakeOS{
-				StatFileInfo:     nil, // does not matter
-				StatError:        nil,
-				IsNotExistResult: false,
-			},
-			name:           "/path/that/not/exists",
-			expectedResult: true,
-			expectedError:  nil,
-		},
-	}
-
-	for _, testcase := range cases {
-		exists, err := IsExists(testcase.os, testcase.name)
-		if exists != testcase.expectedResult {
-			t.Errorf("Expected %v but got %v\n", testcase.expectedResult, exists)
-		}
-
-		if !reflect.DeepEqual(err, testcase.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", testcase.expectedError, err)
-		}
-	}
-}
-
 func TestCopy(t *testing.T) {
 	// dirty hacks
 	testLonelyFile, err := os.Create("/tmp/test_in_file")

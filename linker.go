@@ -22,13 +22,13 @@ func NewLinker(outputer IOutputer, os OS) Linker {
 
 // Move moves oldpath to newpath, creating target directories if need.
 func (l *Linker) Move(oldpath, newpath string) error {
-	// check if destination file exists
-	exists, err := IsExists(l.os, oldpath)
+	// check if oldpath file exists
+	_, err := l.os.Stat(oldpath)
+	if l.os.IsNotExist(err) {
+		return fmt.Errorf("File %s not exists", oldpath)
+	}
 	if err != nil {
 		return err
-	}
-	if !exists {
-		return fmt.Errorf("File %s not exists", oldpath)
 	}
 
 	err = l.os.MkdirAll(path.Dir(newpath), 0700)
