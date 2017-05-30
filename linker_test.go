@@ -55,7 +55,7 @@ func TestLinker_Move(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(&FakeLevelLog{}, c.os)
 		err := linker.Move(c.oldpath, c.newpath)
 
 		if !reflect.DeepEqual(err, c.expectedError) {
@@ -101,7 +101,7 @@ func TestLinker_SetSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(&FakeLevelLog{}, c.os)
 
 		err := linker.SetSymlink(c.srcAbs, c.destAbs)
 		if !reflect.DeepEqual(err, c.expectedError) {
@@ -205,7 +205,7 @@ func TestLinker_NeedSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(&FakeLevelLog{}, c.os)
 
 		result, err := linker.NeedSymlink(c.src, c.dest)
 
@@ -271,7 +271,7 @@ func TestLinker_NeedBackup(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(&FakeLevelLog{}, c.os)
 
 		result, err := linker.NeedBackup(c.dest)
 

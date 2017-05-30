@@ -150,7 +150,7 @@ func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		cleaner := NewCleaner(&FakeOutputer{}, c.os)
+		cleaner := NewCleaner(&FakeLevelLog{}, c.os)
 
 		//// the hack
 		//home, err := os.Open(os.ExpandEnv("$HOME"))

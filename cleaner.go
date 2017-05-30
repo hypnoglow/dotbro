@@ -8,14 +8,14 @@ import (
 )
 
 type Cleaner struct {
-	outputer IOutputer
-	os       OS
+	log LevelLogger
+	os  OS
 }
 
-func NewCleaner(outputer IOutputer, os OS) Cleaner {
+func NewCleaner(outputer LevelLogger, os OS) Cleaner {
 	return Cleaner{
-		outputer: outputer,
-		os:       os,
+		log: outputer,
+		os:  os,
 	}
 }
 
@@ -76,10 +76,10 @@ func (c *Cleaner) cleanFiles(dirPath string, files []os.FileInfo) error {
 
 		if !removedAny {
 			removedAny = true
-			c.outputer.OutInfo("Cleaning dead symlinks...")
+			c.log.Info("Cleaning dead symlinks...")
 		}
 
-		c.outputer.OutInfo("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath))
+		c.log.Info("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath))
 	}
 
 	return nil

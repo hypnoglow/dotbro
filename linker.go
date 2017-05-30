@@ -9,14 +9,14 @@ import (
 )
 
 type Linker struct {
-	outputer IOutputer
-	os       OS
+	log LevelLogger
+	os  OS
 }
 
-func NewLinker(outputer IOutputer, os OS) Linker {
+func NewLinker(outputer LevelLogger, os OS) Linker {
 	return Linker{
-		outputer: outputer,
-		os:       os,
+		log: outputer,
+		os:  os,
 	}
 }
 
@@ -36,7 +36,7 @@ func (l *Linker) Move(oldpath, newpath string) error {
 		return err
 	}
 
-	l.outputer.OutVerbose("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath))
+	l.log.Debug("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath))
 	err = l.os.Rename(oldpath, newpath)
 	return err
 }
@@ -53,7 +53,7 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 		return err
 	}
 
-	l.outputer.OutInfo("  %s set symlink %s -> %s", Green("+"), Brown(srcAbs), Brown(destAbs))
+	l.log.Info("  %s set symlink %s -> %s", Green("+"), Brown(srcAbs), Brown(destAbs))
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
 	}
 
 	if target == src {
-		l.outputer.OutVerbose("  %s %s is correct symlink", Green("✓"), Brown(dest))
+		l.log.Debug("  %s %s is correct symlink", Green("✓"), Brown(dest))
 		return false, nil
 	}
 
@@ -86,7 +86,7 @@ func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
 	if err = l.os.Remove(dest); err != nil {
 		return false, err
 	}
-	l.outputer.OutInfo("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
+	l.log.Info("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
 
 	return true, nil
 }
