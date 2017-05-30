@@ -201,47 +201,68 @@ func installAction(config *Configuration) error {
 	return nil
 }
 
+// getConfigPath returns dotbro config path.
+// If it cannot find the config path - it terminates the program.
 func getConfigPath(configArg interface{}) string {
 	var configPath string
 	if configArg != nil {
 		configPath = configArg.(string)
 	}
 
-	rc := NewRC()
-	var err error
-
-	// If config param is not passed to dotbro, read it from RC file.
+	// If config param is not passed to dotbro, read it from profile file.
 	if configPath == "" {
-		if err = rc.Load(); err != nil {
-			outLog.Error("Error reading rc file: %s", err)
+		f, err := os.Open(os.ExpandEnv(ProfilePath))
+		if os.IsNotExist(err) {
+			outLog.Error("Config file not specified.")
+			exit(1)
+		} else if err != nil {
+			outLog.Error("Error accessing profile file: %s", err)
 			exit(1)
 		}
 
-		if rc.Config.Path == "" {
+		profile, err := NewProfileFromReader(f)
+		if err != nil {
+			outLog.Error("Error reading from profile file: %s", err)
+			exit(1)
+		}
+
+		if profile.Config.Path == "" {
+			// Config is not present in either profile or arguments.
 			outLog.Error("Config file not specified.")
 			exit(1)
 		}
 
-		outLog.Debug("Got config path from file %s", Brown(RCFilepath))
-		return rc.Config.Path
+		outLog.Debug("Got config path from file %s", Brown(ProfilePath))
+		return profile.Config.Path
 	}
 
-	// Save to RC file
-	configPath, err = filepath.Abs(configPath)
+	configPath, err := filepath.Abs(configPath)
 	if err != nil {
 		outLog.Error("Bad config path: %s", err)
 		exit(1)
 	}
 
-	rc.SetPath(configPath)
-
-	if err = rc.Save(); err != nil {
-		outLog.Error("Cannot save rc file: %s", err)
+	// Prepare dir and file.
+	if err := os.MkdirAll(filepath.Dir(os.ExpandEnv(ProfilePath)), 0700); err != nil {
+		outLog.Error("Cannot create dir for profile file: %s", err)
+		exit(1)
+	}
+	f, err := os.Create(os.ExpandEnv(ProfilePath))
+	if err != nil {
+		outLog.Error("Error accessing profile file: %s", err)
 		exit(1)
 	}
 
-	outLog.Debug("Saved config path to file %s", Brown(RCFilepath))
-	return rc.Config.Path
+	// Save to file.
+	profile := NewProfile()
+	profile.Config.Path = configPath
+	if err = profile.Save(f); err != nil {
+		outLog.Error("Cannot save profile to file: %s", err)
+		exit(1)
+	}
+
+	outLog.Debug("Saved config path to file %s", Brown(ProfilePath))
+	return profile.Config.Path
 }
 
 func getMapping(config *Configuration, srcDirAbs string) map[string]string {
