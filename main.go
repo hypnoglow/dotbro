@@ -51,7 +51,8 @@ func main() {
 	config, err := NewConfiguration(configPath)
 	if err != nil {
 		outputer.OutError("Cannot read configuration from file %s : %s.\n", configPath, err)
-		outputer.OutInfo("%s: Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", Magenta("TIP"))
+		// todo: make tip relevant to error.
+		//outputer.OutInfo("%s: Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", Magenta("TIP"))
 		exit(1)
 	}
 

@@ -53,6 +53,8 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 		return err
 	}
 
+	// todo: replace srcAbs with shorter path.
+
 	l.outputer.OutInfo("  %s set symlink %s -> %s", Green("+"), Brown(srcAbs), Brown(destAbs))
 	return nil
 }
