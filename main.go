@@ -83,7 +83,7 @@ func main() {
 		outLog.Info("\n%s was successfully added to your dotfiles!", Brown(filename))
 		exit(0)
 	case args["clean"]:
-		if err = cleanAction(config); err != nil {
+		if err = cleanAction(config.Directories.Destination); err != nil {
 			outLog.Error("%s", err)
 			exit(1)
 		}
@@ -162,9 +162,10 @@ func addAction(filename string, config *Configuration) error {
 	return nil
 }
 
-func cleanAction(config *Configuration) error {
+// cleanAction removes bad symlinks in the destination directory.
+func cleanAction(dirpath string) error {
 	cleaner := NewCleaner(&outLog, osfs)
-	if err := cleaner.CleanDeadSymlinks(config.Directories.Destination); err != nil {
+	if err := cleaner.CleanDeadSymlinks(dirpath); err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
@@ -172,19 +173,16 @@ func cleanAction(config *Configuration) error {
 }
 
 func installAction(config *Configuration) error {
-	// Default action: install
-	cleaner := NewCleaner(&outLog, osfs)
-	err := cleaner.CleanDeadSymlinks(config.Directories.Destination)
-	if err != nil {
-		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
+	if err := cleanAction(config.Directories.Destination); err != nil {
+		return err
 	}
 
 	srcDirAbs := config.Directories.Dotfiles
 	if config.Directories.Sources != "" {
-		if _, err = os.Stat(config.Directories.Sources); os.IsNotExist(err) {
-			return fmt.Errorf("Sources directory `%s' does not exist.", config.Directories.Sources)
-		}
-		if err != nil {
+		if _, err := os.Stat(config.Directories.Sources); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("Sources directory `%s' does not exist.", config.Directories.Sources)
+			}
 			return fmt.Errorf("Error reading sources directory `%s': %s", config.Directories.Sources, err)
 		}
 		srcDirAbs += "/" + config.Directories.Sources
@@ -266,46 +264,42 @@ func getConfigPath(configArg interface{}) string {
 }
 
 func getMapping(config *Configuration, srcDirAbs string) map[string]string {
-	mapping := make(map[string]string)
+	// If config has mapping - return it.
 
-	if len(config.Mapping) == 0 {
-		// install all the things
-		outLog.Debug("Mapping is not specified - install all the things")
-		dir, err := os.Open(srcDirAbs)
-		if err != nil {
-			outLog.Error("Error reading dotfiles source dir: %s", err)
-			exit(1)
-		}
-
-		defer func() {
-			if err = dir.Close(); err != nil {
-				outLog.Warning("Error closing dir %s: $s", srcDirAbs, err.Error())
-			}
-		}()
-
-		files, err := dir.Readdir(0)
-		if err != nil {
-			outLog.Error("Error reading dotfiles source dir: %s", err)
-			exit(1)
-		}
-
-		for _, fileInfo := range files {
-			mapping[fileInfo.Name()] = fileInfo.Name()
-		}
-
-		// filter excludes
-		for _, exclude := range config.Files.Excludes {
-			if _, ok := mapping[exclude]; ok {
-				delete(mapping, exclude)
-			}
-		}
-	} else {
-		// install by mapping
+	if len(config.Mapping) != 0 {
 		if len(config.Files.Excludes) > 0 {
 			outLog.Warning("Excludes in config make no sense when mapping is specified, omitting them.")
 		}
 
-		mapping = config.Mapping
+		return config.Mapping
+	}
+
+	// Config has no mapping - make mapping which includes all the files in dotfiles dir.
+	outLog.Debug("Mapping is not specified - install all the things")
+
+	dir, err := os.Open(srcDirAbs)
+	if err != nil {
+		outLog.Error("Error reading dotfiles source dir: %s", err)
+		exit(1)
+	}
+	defer dir.Close()
+
+	files, err := dir.Readdir(0)
+	if err != nil {
+		outLog.Error("Error reading dotfiles source dir: %s", err)
+		exit(1)
+	}
+
+	mapping := make(map[string]string)
+	for _, fileInfo := range files {
+		mapping[fileInfo.Name()] = fileInfo.Name()
+	}
+
+	// filter excludes
+	for _, exclude := range config.Files.Excludes {
+		if _, ok := mapping[exclude]; ok {
+			delete(mapping, exclude)
+		}
 	}
 
 	return mapping

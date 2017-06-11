@@ -12,11 +12,8 @@ type Cleaner struct {
 	os  OS
 }
 
-func NewCleaner(outputer LevelLogger, os OS) Cleaner {
-	return Cleaner{
-		log: outputer,
-		os:  os,
-	}
+func NewCleaner(log LevelLogger, os OS) Cleaner {
+	return Cleaner{log, os}
 }
 
 func (c *Cleaner) CleanDeadSymlinks(dirPath string) error {
