@@ -49,12 +49,7 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 		return err
 	}
 
-	if err := l.os.Symlink(srcAbs, destAbs); err != nil {
-		return err
-	}
-
-	l.outputer.OutInfo("  %s set symlink %s -> %s", Green("+"), Brown(srcAbs), Brown(destAbs))
-	return nil
+	return l.os.Symlink(srcAbs, destAbs)
 }
 
 // NeedSymlink reports whether source file needs to be symlinked to destination path.

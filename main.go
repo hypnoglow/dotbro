@@ -191,7 +191,36 @@ func installAction(config *Configuration, outputer IOutputer) error {
 	mapping := getMapping(config, srcDirAbs, outputer)
 	linker := NewLinker(outputer, osfs)
 
-	outputer.OutInfo("Installing dotfiles...")
+	outputer.OutInfo("--> Installing dotfiles...")
+
+	// filter mapping:
+	// - non-existent files
+	// - already installed files
+	filterMapping(mapping, func(src, dst string) bool {
+		srcAbs := path.Join(srcDirAbs, src)
+		destAbs := path.Join(config.Directories.Destination, dst)
+		if _, err := osfs.Stat(srcAbs); err != nil {
+			if osfs.IsNotExist(err) {
+				outputer.OutWarn("Source file %s does not exist", srcAbs)
+				return false
+			}
+
+			outputer.OutError("Error processing source file %s: %s", src, err)
+			exit(1)
+		}
+		needSymlink, err := linker.NeedSymlink(srcAbs, destAbs)
+		if err != nil {
+			outputer.OutError("Error processing destination file %s: %s", destAbs, err)
+			exit(1)
+		}
+		return needSymlink
+	})
+
+	if len(mapping) == 0 {
+		return nil
+	}
+
+	outputer.OutInfo("From %s to %s :", Brown(srcDirAbs), Brown(config.Directories.Destination))
 	for src, dst := range mapping {
 		installDotfile(src, dst, linker, config, srcDirAbs, outputer)
 	}
@@ -288,29 +317,17 @@ func getMapping(config *Configuration, srcDirAbs string, outputer IOutputer) map
 	return mapping
 }
 
+func filterMapping(mapping map[string]string, callback func(src, dst string) bool) {
+	for src, dst := range mapping {
+		if !callback(src, dst) {
+			delete(mapping, src)
+		}
+	}
+}
+
 func installDotfile(src, dest string, linker Linker, config *Configuration, srcDirAbs string, outputer IOutputer) {
-	srcAbs := srcDirAbs + "/" + src
-	destAbs := config.Directories.Destination + "/" + dest
-
-	_, err := osfs.Stat(srcAbs)
-	if osfs.IsNotExist(err) {
-		outputer.OutWarn("Source file %s does not exist", srcAbs)
-		return
-	}
-	if err != nil {
-		outputer.OutError("Error processing source file %s: %s", src, err)
-		exit(1)
-	}
-
-	needSymlink, err := linker.NeedSymlink(srcAbs, destAbs)
-	if err != nil {
-		outputer.OutError("Error processing destination file %s: %s", destAbs, err)
-		exit(1)
-	}
-
-	if !needSymlink {
-		return
-	}
+	srcAbs := path.Join(srcDirAbs, src)
+	destAbs := path.Join(config.Directories.Destination, dest)
 
 	needBackup, err := linker.NeedBackup(destAbs)
 	if err != nil {
@@ -333,6 +350,8 @@ func installDotfile(src, dest string, linker Linker, config *Configuration, srcD
 		outputer.OutError("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err)
 		exit(1)
 	}
+
+	outputer.OutInfo("  %s set symlink %s -> %s", Green("+"), Brown(src), Brown(dest))
 }
 
 // exit actually calls os.Exit after logger logs exit message.
