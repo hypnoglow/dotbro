@@ -301,9 +301,7 @@ func getMapping(config *Configuration, srcDirAbs string, outputer IOutputer) map
 
 		// filter excludes
 		for _, exclude := range config.Files.Excludes {
-			if _, ok := mapping[exclude]; ok {
-				delete(mapping, exclude)
-			}
+			delete(mapping, exclude)
 		}
 	} else {
 		// install by mapping

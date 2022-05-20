@@ -11,9 +11,7 @@ import (
 
 type FakeLogWriterForOutputer struct{}
 
-func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {
-	return
-}
+func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {}
 
 func TestNewOutputer(t *testing.T) {
 	NewOutputer(OutputerModeNormal, os.Stdout, &FakeLogWriterForOutputer{})
@@ -189,18 +187,7 @@ func TestOutputer_OutError(t *testing.T) {
 
 type FakeOutputer struct{}
 
-func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutInfo(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutWarn(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutError(format string, v ...interface{}) {
-	return
-}
+func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {}
+func (o *FakeOutputer) OutInfo(format string, v ...interface{})    {}
+func (o *FakeOutputer) OutWarn(format string, v ...interface{})    {}
+func (o *FakeOutputer) OutError(format string, v ...interface{})   {}
