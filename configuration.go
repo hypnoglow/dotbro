@@ -112,19 +112,19 @@ type directoryParam struct {
 
 func getDirectoriesParams(configPath string) map[string]directoryParam {
 	params := map[string]directoryParam{
-		"Dotfiles": directoryParam{
+		"Dotfiles": {
 			defaultValue: path.Dir(configPath),
 			isRelative:   false,
 		},
-		"Sources": directoryParam{
+		"Sources": {
 			defaultValue: "",
 			isRelative:   true,
 		},
-		"Destination": directoryParam{
+		"Destination": {
 			defaultValue: os.Getenv("HOME"),
 			isRelative:   false,
 		},
-		"Backup": directoryParam{
+		"Backup": {
 			defaultValue: os.Getenv("HOME") + "/.dotfiles~",
 			isRelative:   false,
 		},
