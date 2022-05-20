@@ -10,12 +10,12 @@ linters:
     - depguard
     - errcheck
     - exportloopref
-#    - gci
+    - gci
 #    - goconst
 #    - gocritic
     - gocyclo
 #    - gofmt
-#    - goimports
+    - goimports
 #    - gosec
 #    - gosimple
     - govet

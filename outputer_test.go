@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
 	. "github.com/logrusorgru/aurora"
-	"fmt"
 )
 
 type FakeLogWriterForOutputer struct{}
