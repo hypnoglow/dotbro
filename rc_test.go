@@ -8,10 +8,6 @@ import (
 
 const testRCPath = "/tmp/dotbro_rc.json"
 
-func TestNewRC(t *testing.T) {
-	NewRC()
-}
-
 func TestRC_SetPath(t *testing.T) {
 	rc := NewRC()
 

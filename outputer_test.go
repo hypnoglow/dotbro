@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	. "github.com/logrusorgru/aurora"
@@ -12,10 +11,6 @@ import (
 type FakeLogWriterForOutputer struct{}
 
 func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {}
-
-func TestNewOutputer(t *testing.T) {
-	NewOutputer(OutputerModeNormal, os.Stdout, &FakeLogWriterForOutputer{})
-}
 
 func TestOutputer_OutVerbose(t *testing.T) {
 	cases := []struct {

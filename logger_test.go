@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func TestNewDebugLogger(t *testing.T) {
-	NewDebugLogger(nil)
-}
-
 func TestDebugLogger_Write(t *testing.T) {
 	cases := []struct {
 		format   string
@@ -19,7 +15,7 @@ func TestDebugLogger_Write(t *testing.T) {
 		{
 			format:   "This is the %s simple log entry.",
 			argument: "first",
-			expected: "logger_test.go:38 This is the first simple log entry.\n",
+			expected: "logger_test.go:34 This is the first simple log entry.\n",
 		},
 	}
 
