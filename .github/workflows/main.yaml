@@ -22,7 +22,11 @@ jobs:
       - name: Install dependencies
         run: |
           go mod download
-          go mod vendor
+
+      - name: Run linters
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.41.1
 
       - name: Run tests
         run: |

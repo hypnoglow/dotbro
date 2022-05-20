@@ -8,6 +8,11 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+const (
+	testJSONConfigPath = "/tmp/dotbro.json"
+	testTOMLConfigPath = "/tmp/dotbro.toml"
+)
+
 func TestNewConfiguration(t *testing.T) {
 	testNewConfiguration_FromJSON(t)
 	testNewConfiguration_FromTOML(t)
@@ -24,12 +29,12 @@ func TestNewConfiguration(t *testing.T) {
 func testNewConfiguration_FromJSON(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.json"
-
-	file, err := os.Create(tmpFilepath)
+	file, err := os.Create(testJSONConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer os.Remove(testJSONConfigPath)
 
 	dirs := &Directories{
 		Dotfiles: "/tmp",
@@ -46,25 +51,21 @@ func testNewConfiguration_FromJSON(t *testing.T) {
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testJSONConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }
 
 func testNewConfiguration_FromTOML(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.toml"
-
-	file, err := os.Create(tmpFilepath)
+	file, err := os.Create(testTOMLConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer os.Remove(testTOMLConfigPath)
 
 	dirs := &Directories{
 		Dotfiles: "/tmp",
@@ -80,14 +81,10 @@ func testNewConfiguration_FromTOML(t *testing.T) {
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testTOMLConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }
 
 func testNewConfiguration_FromUnknown(t *testing.T) {
@@ -106,60 +103,52 @@ func testNewConfiguration_FromUnknown(t *testing.T) {
 func testNewConfiguration_BadJSON(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.json"
-
-	f, err := os.Create(tmpFilepath)
+	f, err := os.Create(testJSONConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.WriteString("{bad json:")
+	defer os.Remove(testJSONConfigPath)
+
+	_, _ = f.WriteString("{bad json:")
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testJSONConfigPath)
 	if err == nil {
 		t.Fatal("Should error because of invalid json")
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }
 
 func testNewConfiguration_BadTOML(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.toml"
-
-	f, err := os.Create(tmpFilepath)
+	f, err := os.Create(testTOMLConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.WriteString("bad toml")
+	defer os.Remove(testTOMLConfigPath)
+
+	_, _ = f.WriteString("bad toml")
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testTOMLConfigPath)
 	if err == nil {
 		t.Fatal("Should error because of invalid toml")
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }
 
 func testNewConfiguration_BadDotfilesDirectory(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.json"
-
-	file, err := os.Create(tmpFilepath)
+	file, err := os.Create(testJSONConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer os.Remove(testJSONConfigPath)
 
 	dirs := &Directories{
 		Dotfiles: "tmp", // this path must be absolute
@@ -176,25 +165,21 @@ func testNewConfiguration_BadDotfilesDirectory(t *testing.T) {
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testJSONConfigPath)
 	if err == nil {
 		t.Fatal("Should fail because of directories.dotfiles must be an absolute path")
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }
 
 func testNewConfiguration_BadSourcesDirectory(t *testing.T) {
 	// set up
 
-	tmpFilepath := "/tmp/dotbro.json"
-
-	file, err := os.Create(tmpFilepath)
+	file, err := os.Create(testJSONConfigPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer os.Remove(testJSONConfigPath)
 
 	dirs := &Directories{
 		Dotfiles: "/tmp",
@@ -212,12 +197,8 @@ func testNewConfiguration_BadSourcesDirectory(t *testing.T) {
 
 	// test
 
-	_, err = NewConfiguration(tmpFilepath)
+	_, err = NewConfiguration(testJSONConfigPath)
 	if err == nil {
 		t.Fatal("Should fail because of directories.sources must be a relative path")
 	}
-
-	// tear down
-
-	os.Remove(tmpFilepath)
 }

@@ -68,7 +68,12 @@ func (o *Outputer) OutInfo(format string, v ...interface{}) {
 func (o *Outputer) OutWarn(format string, v ...interface{}) {
 	o.Logger.Write(fmt.Sprintf("WARN: %s", fmt.Sprintf(format, v...)))
 
-	fmt.Fprintln(o.Output, fmt.Sprintf("%s: %s", Brown("WARN"), fmt.Sprintf(format, v...)))
+	fmt.Fprintf(
+		o.Output,
+		"%s: %s\n",
+		Brown("WARN"),
+		fmt.Sprintf(format, v...),
+	)
 }
 
 // OutError prints error message to stdout.
@@ -76,5 +81,10 @@ func (o *Outputer) OutError(format string, v ...interface{}) {
 	o.Logger.Write(fmt.Sprintf("ERROR: %s", fmt.Sprintf(format, v...)))
 
 	// TODO: write to stderr
-	fmt.Fprintln(o.Output, fmt.Sprintf("%s: %s", Red("ERROR"), fmt.Sprintf(format, v...)))
+	fmt.Fprintf(
+		o.Output,
+		"%s: %s\n",
+		Red("ERROR"),
+		fmt.Sprintf(format, v...),
+	)
 }

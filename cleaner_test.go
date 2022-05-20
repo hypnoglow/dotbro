@@ -152,12 +152,14 @@ func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 	for _, c := range cases {
 		cleaner := NewCleaner(&FakeOutputer{}, c.os)
 
-		//// the hack
-		//home, err := os.Open(os.ExpandEnv("$HOME"))
-		//if err != nil {
-		//	t.Fatal("Cannot open $HOME")
-		//}
-		//c.os.OpenResult = home
+		/*
+			// the hack
+			home, err := os.Open(os.ExpandEnv("$HOME"))
+			if err != nil {
+				t.Fatal("Cannot open $HOME")
+			}
+			c.os.OpenResult = home
+		*/
 
 		err := cleaner.CleanDeadSymlinks(c.dirpath)
 

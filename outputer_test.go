@@ -2,22 +2,15 @@ package main
 
 import (
 	"bytes"
-	"os"
+	"fmt"
 	"testing"
 
 	. "github.com/logrusorgru/aurora"
-	"fmt"
 )
 
 type FakeLogWriterForOutputer struct{}
 
-func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {
-	return
-}
-
-func TestNewOutputer(t *testing.T) {
-	NewOutputer(OutputerModeNormal, os.Stdout, &FakeLogWriterForOutputer{})
-}
+func (f *FakeLogWriterForOutputer) Write(format string, v ...interface{}) {}
 
 func TestOutputer_OutVerbose(t *testing.T) {
 	cases := []struct {
@@ -189,18 +182,7 @@ func TestOutputer_OutError(t *testing.T) {
 
 type FakeOutputer struct{}
 
-func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutInfo(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutWarn(format string, v ...interface{}) {
-	return
-}
-
-func (o *FakeOutputer) OutError(format string, v ...interface{}) {
-	return
-}
+func (o *FakeOutputer) OutVerbose(format string, v ...interface{}) {}
+func (o *FakeOutputer) OutInfo(format string, v ...interface{})    {}
+func (o *FakeOutputer) OutWarn(format string, v ...interface{})    {}
+func (o *FakeOutputer) OutError(format string, v ...interface{})   {}

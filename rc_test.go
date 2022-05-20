@@ -6,32 +6,22 @@ import (
 	"testing"
 )
 
-func TestNewRC(t *testing.T) {
-	NewRC()
-}
+const testRCPath = "/tmp/dotbro_rc.json"
 
 func TestRC_SetPath(t *testing.T) {
-	// set up
-
-	configPath := "/tmp/dotbro.toml"
-
-	// test
-
 	rc := NewRC()
 
-	rc.SetPath(configPath)
+	rc.SetPath(testTOMLConfigPath)
 
-	if rc.Config.Path != configPath {
+	if rc.Config.Path != testTOMLConfigPath {
 		t.Fatal("Fail to set configPath correctly")
 	}
-
-	// tear down
 }
 
 func TestRC_LoadNotExists(t *testing.T) {
 	// set up
 
-	RCFilepath = "/tmp/dotbro_rc.json"
+	RCFilepath = testRCPath
 
 	// test
 
@@ -45,11 +35,10 @@ func TestRC_LoadNotExists(t *testing.T) {
 func TestRC_LoadExists(t *testing.T) {
 	// set up
 
-	RCFilepath = "/tmp/dotbro_rc.json"
-	configPath := "/tmp/dotbro.toml"
+	RCFilepath = testRCPath
 
 	setupRC := NewRC()
-	setupRC.SetPath(configPath)
+	setupRC.SetPath(testTOMLConfigPath)
 
 	f, err := os.Create(RCFilepath)
 	if err != nil {
@@ -70,7 +59,7 @@ func TestRC_LoadExists(t *testing.T) {
 
 	// validate
 
-	if rc.Config.Path != configPath {
+	if rc.Config.Path != testTOMLConfigPath {
 		t.Fatal("Failed to load RC correctly")
 	}
 
@@ -82,14 +71,13 @@ func TestRC_LoadExists(t *testing.T) {
 func TestRC_Save(t *testing.T) {
 	// set up
 
-	RCFilepath = "/tmp/dotbro_rc.json"
-	configPath := "/tmp/dotbro.toml"
+	RCFilepath = testRCPath
 
 	// test
 
 	rc := NewRC()
 
-	rc.SetPath(configPath)
+	rc.SetPath(testTOMLConfigPath)
 
 	if err := rc.Save(); err != nil {
 		t.Fatal(err)
@@ -108,7 +96,7 @@ func TestRC_Save(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if loadedRC.Config.Path != configPath {
+	if loadedRC.Config.Path != testTOMLConfigPath {
 		t.Fatal("Failed to save RC correctly")
 	}
 
