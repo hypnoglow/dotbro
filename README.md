@@ -171,9 +171,9 @@ excludes = [
 
 # Install dotbro
 
-### Using [Go](https://golang.org/doc/install) tools:
+### Using [Go](https://go.dev/doc/install) tools:
 
-    go get github.com/hypnoglow/dotbro
+    go install github.com/hypnoglow/dotbro@latest
 
 This downloads the source code, builds and installs the latest version of dotbro.
 Then you can use `dotbro` command right away.
