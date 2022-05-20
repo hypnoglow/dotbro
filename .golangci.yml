@@ -4,10 +4,11 @@ run:
 
 linters:
   disable-all: true
+  # TODO: fix issues and enable linters.
   enable:
     - deadcode
     - depguard
-#    - errcheck
+    - errcheck
     - exportloopref
 #    - gci
 #    - goconst

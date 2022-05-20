@@ -113,7 +113,7 @@ func testNewConfiguration_BadJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.WriteString("{bad json:")
+	_, _ = f.WriteString("{bad json:")
 
 	// test
 
@@ -137,7 +137,7 @@ func testNewConfiguration_BadTOML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.WriteString("bad toml")
+	_, _ = f.WriteString("bad toml")
 
 	// test
 
