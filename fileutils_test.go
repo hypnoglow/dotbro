@@ -54,11 +54,11 @@ func TestCopy(t *testing.T) {
 					NameValue: "source",
 					ModeValue: 0,
 				},
-				StatError: errors.New("Permisson denied 123"),
+				StatError: errors.New("Permission denied 123"),
 			},
 			src:           "/path/to/source",
 			dest:          "/path/to/dest",
-			expectedError: errors.New("Permisson denied 123"),
+			expectedError: errors.New("Permission denied 123"),
 		},
 		{
 			os: &FakeOS{

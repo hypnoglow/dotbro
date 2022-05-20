@@ -20,7 +20,7 @@ linters:
     - gosimple
     - govet
     - ineffassign
-#    - misspell
+    - misspell
     - nakedret
     - prealloc
 #    - revive
