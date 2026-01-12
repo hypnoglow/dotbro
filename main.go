@@ -239,13 +239,14 @@ func getConfigPath(configArg any, outputer IOutputer) []string {
 
 	rc := NewRC()
 
-	// If config param is not passed to dotbro, read it from RC file.
-	if configPath == "" {
-		if err := rc.Load(); err != nil {
-			outputer.OutError("Error reading rc file: %s", err)
-			exit(1)
-		}
+	// Always load RC file (ignore error if file doesn't exist)
+	if err := rc.Load(); err != nil {
+		outputer.OutError("Error reading rc file: %s", err)
+		exit(1)
+	}
 
+	// If config param is not passed to dotbro, use paths from RC file.
+	if configPath == "" {
 		paths := rc.GetPaths()
 		if len(paths) == 0 {
 			outputer.OutError("Config file not specified.")
@@ -256,7 +257,7 @@ func getConfigPath(configArg any, outputer IOutputer) []string {
 		return paths
 	}
 
-	// Save to RC file
+	// Add new config path to RC file
 	var err error
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {

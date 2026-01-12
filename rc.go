@@ -61,7 +61,8 @@ func (rc *RC) Load() (err error) {
 	bytes, err := ioutil.ReadFile(rcFile)
 	if os.IsNotExist(err) {
 		return nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return err
 	}
 
