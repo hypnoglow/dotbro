@@ -6,32 +6,27 @@ linters:
   disable-all: true
   # TODO: fix issues and enable linters.
   enable:
-    - deadcode
-    - depguard
     - errcheck
-    - exportloopref
     - gci
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
-#    - gosec
+    #    - gosec
     - gosimple
     - govet
     - ineffassign
     - misspell
     - nakedret
     - prealloc
-#    - revive
-#    - staticcheck
-    - structcheck
-#    - stylecheck
+    #    - revive
+    #    - staticcheck
+    #    - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
 
 linters-settings:
   goimports:

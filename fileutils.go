@@ -42,7 +42,7 @@ func Copy(osfs OS, src, dst string) error {
 func copyFileContents(osfs OS, src, dst string) (err error) {
 	in, err := osfs.Open(src)
 	if err != nil {
-		return
+		return err
 	}
 
 	defer func() {
@@ -58,7 +58,7 @@ func copyFileContents(osfs OS, src, dst string) (err error) {
 
 	out, err := osfs.Create(dst)
 	if err != nil {
-		return
+		return err
 	}
 
 	defer func() {

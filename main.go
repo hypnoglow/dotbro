@@ -46,56 +46,59 @@ func main() {
 
 	// Process config
 
-	configPath := getConfigPath(args["--config"], &outputer)
-	debugLogger.Write("Parsing config file %s", configPath)
-	config, err := NewConfiguration(configPath)
-	if err != nil {
-		outputer.OutError("Cannot read configuration from file %s : %s.\n", configPath, err)
-		outputer.OutInfo("%s: Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", Magenta("TIP"))
-		exit(1)
-	}
+	configPaths := getConfigPath(args["--config"], &outputer)
 
-	// Preparations
-
-	err = os.MkdirAll(config.Directories.Backup, 0700)
-	if err != nil && !os.IsExist(err) {
-		outputer.OutError("Error creating backup directory: %s", err)
-		exit(1)
-	}
-
-	outputer.OutVerbose("Dotfiles root: %s", Brown(config.Directories.Dotfiles))
-	outputer.OutVerbose("Dotfiles src: %s", Brown(config.Directories.Sources))
-	outputer.OutVerbose("Destination dir: %s", Brown(config.Directories.Destination))
-
-	// Select action
-
-	switch {
-	case args["add"]:
-		filename := args["<filename>"].(string)
-		if err = addAction(filename, config, &outputer); err != nil {
-			outputer.OutError("%s", err)
+	for _, configPath := range configPaths {
+		debugLogger.Write("Parsing config file %s", configPath)
+		config, err := NewConfiguration(configPath)
+		if err != nil {
+			outputer.OutError("Cannot read configuration from file %s : %s.\n", configPath, err)
+			outputer.OutInfo("%s: Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", Magenta("TIP"))
 			exit(1)
 		}
 
-		outputer.OutInfo("\n%s was successfully added to your dotfiles!", Brown(filename))
-		exit(0)
-	case args["clean"]:
-		if err = cleanAction(config, &outputer); err != nil {
-			outputer.OutError("%s", err)
+		// Preparations
+
+		err = os.MkdirAll(config.Directories.Backup, 0700)
+		if err != nil && !os.IsExist(err) {
+			outputer.OutError("Error creating backup directory: %s", err)
 			exit(1)
 		}
 
-		outputer.OutInfo("\nCleaned!")
-		exit(0)
-	default:
-		// Default action: install
-		if err = installAction(config, &outputer); err != nil {
-			outputer.OutError("%s", err)
-			exit(1)
-		}
+		outputer.OutVerbose("Dotfiles root: %s", Brown(config.Directories.Dotfiles))
+		outputer.OutVerbose("Dotfiles src: %s", Brown(config.Directories.Sources))
+		outputer.OutVerbose("Destination dir: %s", Brown(config.Directories.Destination))
 
-		outputer.OutInfo("\nAll done (─‿‿─)")
-		exit(0)
+		// Select action
+
+		switch {
+		case args["add"]:
+			filename := args["<filename>"].(string)
+			if err = addAction(filename, config, &outputer); err != nil {
+				outputer.OutError("%s", err)
+				exit(1)
+			}
+
+			outputer.OutInfo("\n%s was successfully added to your dotfiles!", Brown(filename))
+			exit(0)
+		case args["clean"]:
+			if err = cleanAction(config, &outputer); err != nil {
+				outputer.OutError("%s", err)
+				exit(1)
+			}
+
+			outputer.OutInfo("\nCleaned!")
+			exit(0)
+		default:
+			// Default action: install
+			if err = installAction(config, &outputer); err != nil {
+				outputer.OutError("%s", err)
+				exit(1)
+			}
+
+			outputer.OutInfo("\nAll done (─‿‿─)")
+			exit(0)
+		}
 	}
 }
 
@@ -228,32 +231,33 @@ func installAction(config *Configuration, outputer IOutputer) error {
 	return nil
 }
 
-func getConfigPath(configArg interface{}, outputer IOutputer) string {
+func getConfigPath(configArg any, outputer IOutputer) []string {
 	var configPath string
 	if configArg != nil {
 		configPath = configArg.(string)
 	}
 
 	rc := NewRC()
-	var err error
 
 	// If config param is not passed to dotbro, read it from RC file.
 	if configPath == "" {
-		if err = rc.Load(); err != nil {
+		if err := rc.Load(); err != nil {
 			outputer.OutError("Error reading rc file: %s", err)
 			exit(1)
 		}
 
-		if rc.Config.Path == "" {
+		paths := rc.GetPaths()
+		if len(paths) == 0 {
 			outputer.OutError("Config file not specified.")
 			exit(1)
 		}
 
-		outputer.OutVerbose("Got config path from file %s", Brown(RCFilepath))
-		return rc.Config.Path
+		outputer.OutVerbose("Got config paths from file %s", Brown(RCFilepath))
+		return paths
 	}
 
 	// Save to RC file
+	var err error
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {
 		outputer.OutError("Bad config path: %s", err)
@@ -268,7 +272,7 @@ func getConfigPath(configArg interface{}, outputer IOutputer) string {
 	}
 
 	outputer.OutVerbose("Saved config path to file %s", Brown(RCFilepath))
-	return rc.Config.Path
+	return []string{configPath}
 }
 
 func getMapping(config *Configuration, srcDirAbs string, outputer IOutputer) map[string]string {
