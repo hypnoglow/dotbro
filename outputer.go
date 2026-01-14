@@ -1,5 +1,9 @@
 package main
 
+// NOTE: this file is legacy and not used anymore.
+// We keep it for reference until slog will support colored output + multiple
+// outputs (console and file).
+
 import (
 	"fmt"
 	"io"
@@ -15,11 +19,9 @@ const (
 	OutputerModeVerbose OutputerMode = "9"
 )
 
-type IOutputer interface {
-	OutVerbose(format string, v ...interface{})
-	OutInfo(format string, v ...interface{})
-	OutWarn(format string, v ...interface{})
-	OutError(format string, v ...interface{})
+// LogWriter describes a writer for the log.
+type LogWriter interface {
+	Write(format string, v ...interface{})
 }
 
 // Outputer is a logger that shows the output to the user.
