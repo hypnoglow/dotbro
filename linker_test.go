@@ -55,7 +55,7 @@ func TestLinker_Move(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(c.os)
+		linker := NewLinker(c.os, newDiscardLogger())
 		err := linker.Move(t.Context(), c.oldpath, c.newpath)
 
 		if !reflect.DeepEqual(err, c.expectedError) {
@@ -101,7 +101,7 @@ func TestLinker_SetSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(c.os)
+		linker := NewLinker(c.os, newDiscardLogger())
 
 		err := linker.SetSymlink(c.srcAbs, c.destAbs)
 		if !reflect.DeepEqual(err, c.expectedError) {
@@ -205,7 +205,7 @@ func TestLinker_NeedSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(c.os)
+		linker := NewLinker(c.os, newDiscardLogger())
 
 		result, err := linker.NeedSymlink(t.Context(), c.src, c.dest)
 
@@ -271,7 +271,7 @@ func TestLinker_NeedBackup(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(c.os)
+		linker := NewLinker(c.os, newDiscardLogger())
 
 		result, err := linker.NeedBackup(c.dest)
 

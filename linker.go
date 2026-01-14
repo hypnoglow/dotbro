@@ -6,17 +6,17 @@ import (
 	"log/slog"
 	"os"
 	"path"
-
-	. "github.com/logrusorgru/aurora"
 )
 
 type Linker struct {
-	os OS
+	os     OS
+	logger *slog.Logger
 }
 
-func NewLinker(os OS) Linker {
+func NewLinker(os OS, logger *slog.Logger) Linker {
 	return Linker{
-		os: os,
+		os:     os,
+		logger: logger,
 	}
 }
 
@@ -36,7 +36,10 @@ func (l *Linker) Move(ctx context.Context, oldpath, newpath string) error {
 		return err
 	}
 
-	slog.DebugContext(ctx, fmt.Sprintf("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath)))
+	l.logger.DebugContext(ctx, "backup",
+		slog.String("status", "→"),
+		slog.String("src", oldpath),
+		slog.String("dst", newpath))
 	err = l.os.Rename(oldpath, newpath)
 	return err
 }
@@ -72,7 +75,9 @@ func (l *Linker) NeedSymlink(ctx context.Context, src, dest string) (bool, error
 	}
 
 	if target == src {
-		slog.DebugContext(ctx, fmt.Sprintf("  %s %s is correct symlink", Green("✓"), Brown(dest)))
+		l.logger.DebugContext(ctx, "correct symlink",
+			slog.String("status", "✓"),
+			slog.String("path", dest))
 		return false, nil
 	}
 
@@ -81,7 +86,9 @@ func (l *Linker) NeedSymlink(ctx context.Context, src, dest string) (bool, error
 	if err = l.os.Remove(dest); err != nil {
 		return false, err
 	}
-	slog.InfoContext(ctx, fmt.Sprintf("  %s delete wrong symlink %s", Green("✓"), Brown(dest)))
+	l.logger.InfoContext(ctx, "delete wrong symlink",
+		slog.String("status", "✓"),
+		slog.String("path", dest))
 
 	return true, nil
 }

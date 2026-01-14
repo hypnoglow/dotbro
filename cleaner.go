@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-
-	. "github.com/logrusorgru/aurora"
 )
 
 type Cleaner struct {
-	os OS
+	os     OS
+	logger *slog.Logger
 }
 
-func NewCleaner(os OS) Cleaner {
+func NewCleaner(os OS, logger *slog.Logger) Cleaner {
 	return Cleaner{
-		os: os,
+		os:     os,
+		logger: logger,
 	}
 }
 
@@ -76,10 +76,12 @@ func (c *Cleaner) cleanFiles(ctx context.Context, dirPath string, files []os.Fil
 
 		if !removedAny {
 			removedAny = true
-			slog.InfoContext(ctx, "Cleaning dead symlinks...")
+			c.logger.InfoContext(ctx, "Cleaning dead symlinks...")
 		}
 
-		slog.InfoContext(ctx, fmt.Sprintf("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath)))
+		c.logger.InfoContext(ctx, "removed broken symlink",
+			slog.String("status", "✓"),
+			slog.String("path", filepath))
 	}
 
 	return nil
