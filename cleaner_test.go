@@ -150,7 +150,7 @@ func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		cleaner := NewCleaner(c.os)
+		cleaner := NewCleaner(c.os, newDiscardLogger())
 
 		/*
 			// the hack
