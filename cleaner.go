@@ -1,25 +1,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	. "github.com/logrusorgru/aurora"
 )
 
 type Cleaner struct {
-	outputer IOutputer
-	os       OS
+	os OS
 }
 
-func NewCleaner(outputer IOutputer, os OS) Cleaner {
+func NewCleaner(os OS) Cleaner {
 	return Cleaner{
-		outputer: outputer,
-		os:       os,
+		os: os,
 	}
 }
 
-func (c *Cleaner) CleanDeadSymlinks(dirPath string) error {
+func (c *Cleaner) CleanDeadSymlinks(ctx context.Context, dirPath string) error {
 	dir, err := c.os.Open(dirPath)
 	if err != nil {
 		return err
@@ -46,11 +46,11 @@ func (c *Cleaner) CleanDeadSymlinks(dirPath string) error {
 		return err
 	}
 
-	return c.cleanFiles(dirPath, files)
+	return c.cleanFiles(ctx, dirPath, files)
 }
 
 // Checks each file, if it is a bad symlink - removes it.
-func (c *Cleaner) cleanFiles(dirPath string, files []os.FileInfo) error {
+func (c *Cleaner) cleanFiles(ctx context.Context, dirPath string, files []os.FileInfo) error {
 	removedAny := false
 	for _, fileInfo := range files {
 		if fileInfo.Mode()&os.ModeSymlink != os.ModeSymlink {
@@ -76,10 +76,10 @@ func (c *Cleaner) cleanFiles(dirPath string, files []os.FileInfo) error {
 
 		if !removedAny {
 			removedAny = true
-			c.outputer.OutInfo("Cleaning dead symlinks...")
+			slog.InfoContext(ctx, "Cleaning dead symlinks...")
 		}
 
-		c.outputer.OutInfo("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath))
+		slog.InfoContext(ctx, fmt.Sprintf("  %s %s has been removed (broken symlink)", Green("✓"), Brown(filepath)))
 	}
 
 	return nil

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 
@@ -9,19 +11,17 @@ import (
 )
 
 type Linker struct {
-	outputer IOutputer
-	os       OS
+	os OS
 }
 
-func NewLinker(outputer IOutputer, os OS) Linker {
+func NewLinker(os OS) Linker {
 	return Linker{
-		outputer: outputer,
-		os:       os,
+		os: os,
 	}
 }
 
 // Move moves oldpath to newpath, creating target directories if need.
-func (l *Linker) Move(oldpath, newpath string) error {
+func (l *Linker) Move(ctx context.Context, oldpath, newpath string) error {
 	// check if oldpath file exists
 	_, err := l.os.Stat(oldpath)
 	if l.os.IsNotExist(err) {
@@ -36,7 +36,7 @@ func (l *Linker) Move(oldpath, newpath string) error {
 		return err
 	}
 
-	l.outputer.OutVerbose("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath))
+	slog.DebugContext(ctx, fmt.Sprintf("  %s backup %s to %s", Green("→"), Brown(oldpath), Brown(newpath)))
 	err = l.os.Rename(oldpath, newpath)
 	return err
 }
@@ -53,7 +53,7 @@ func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
 }
 
 // NeedSymlink reports whether source file needs to be symlinked to destination path.
-func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
+func (l *Linker) NeedSymlink(ctx context.Context, src, dest string) (bool, error) {
 	fi, err := l.os.Lstat(dest)
 	if l.os.IsNotExist(err) {
 		return true, nil
@@ -72,7 +72,7 @@ func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
 	}
 
 	if target == src {
-		l.outputer.OutVerbose("  %s %s is correct symlink", Green("✓"), Brown(dest))
+		slog.DebugContext(ctx, fmt.Sprintf("  %s %s is correct symlink", Green("✓"), Brown(dest)))
 		return false, nil
 	}
 
@@ -81,7 +81,7 @@ func (l *Linker) NeedSymlink(src, dest string) (bool, error) {
 	if err = l.os.Remove(dest); err != nil {
 		return false, err
 	}
-	l.outputer.OutInfo("  %s delete wrong symlink %s", Green("✓"), Brown(dest))
+	slog.InfoContext(ctx, fmt.Sprintf("  %s delete wrong symlink %s", Green("✓"), Brown(dest)))
 
 	return true, nil
 }

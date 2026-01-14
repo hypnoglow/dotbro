@@ -55,8 +55,8 @@ func TestLinker_Move(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
-		err := linker.Move(c.oldpath, c.newpath)
+		linker := NewLinker(c.os)
+		err := linker.Move(t.Context(), c.oldpath, c.newpath)
 
 		if !reflect.DeepEqual(err, c.expectedError) {
 			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
@@ -101,7 +101,7 @@ func TestLinker_SetSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(c.os)
 
 		err := linker.SetSymlink(c.srcAbs, c.destAbs)
 		if !reflect.DeepEqual(err, c.expectedError) {
@@ -205,9 +205,9 @@ func TestLinker_NeedSymlink(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(c.os)
 
-		result, err := linker.NeedSymlink(c.src, c.dest)
+		result, err := linker.NeedSymlink(t.Context(), c.src, c.dest)
 
 		if result != c.expectedResult {
 			t.Errorf("Expected %v but got %v\n", c.expectedResult, result)
@@ -271,7 +271,7 @@ func TestLinker_NeedBackup(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		linker := NewLinker(&FakeOutputer{}, c.os)
+		linker := NewLinker(c.os)
 
 		result, err := linker.NeedBackup(c.dest)
 

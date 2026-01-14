@@ -1,40 +1,44 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"io"
+	"log/slog"
+	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 )
 
-// LogWriter describes a writer for the log.
-type LogWriter interface {
-	Write(format string, v ...interface{})
-}
+func newDebugLogger(ctx context.Context) *slog.Logger {
+	var output io.Writer = io.Discard
 
-// DebugLogger is a logger that logs output to a log.Logger for debugging purposes.
-type DebugLogger struct {
-	Log *log.Logger
-}
-
-// NewDebugLogger creates a new DebugLogger.
-func NewDebugLogger(log *log.Logger) DebugLogger {
-	return DebugLogger{
-		Log: log,
-	}
-}
-
-func (dl DebugLogger) Write(format string, v ...interface{}) {
-	if dl.Log == nil {
-		return
+	filename := os.ExpandEnv(logFilepath)
+	file, err := openLogFile(filename)
+	if err == nil {
+		output = file
+	} else {
+		slog.WarnContext(ctx, fmt.Sprintf("Cannot use log file %s. Reason: %s", filename, err))
 	}
 
-	msg := fmt.Sprintf(format, v...)
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	})
 
-	// Prepend file and line
-	_, filename, line, _ := runtime.Caller(1)
-	msg = fmt.Sprintf("%s:%d %s", filepath.Base(filename), line, msg)
+	logger := slog.New(handler)
 
-	dl.Log.Println(strings.TrimSpace(msg))
+	return logger
+}
+
+func openLogFile(filename string) (*os.File, error) {
+	if err := osfs.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return nil, err
+	}
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
