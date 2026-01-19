@@ -108,7 +108,6 @@ func TestLinker_SetSymlink(t *testing.T) {
 			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
 		}
 	}
-
 }
 
 func TestLinker_NeedSymlink(t *testing.T) {
@@ -216,7 +215,6 @@ func TestLinker_NeedSymlink(t *testing.T) {
 		if !reflect.DeepEqual(err, c.expectedError) {
 			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
 		}
-
 	}
 }
 
@@ -282,6 +280,5 @@ func TestLinker_NeedBackup(t *testing.T) {
 		if !reflect.DeepEqual(err, c.expectedError) {
 			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
 		}
-
 	}
 }

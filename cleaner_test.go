@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TODO: the test is broken (cause of home)
+// TODO: the test is broken (cause of home).
 func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 	cases := []struct {
 		os            *FakeOS
@@ -166,6 +166,5 @@ func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 		if !reflect.DeepEqual(err, c.expectedError) {
 			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
 		}
-
 	}
 }
