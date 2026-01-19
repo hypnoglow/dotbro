@@ -16,7 +16,7 @@ type RC struct {
 	Config rcConfig `json:"config"`
 }
 
-// rcConfig represents "config" section of RC data
+// rcConfig represents "config" section of RC data.
 type rcConfig struct {
 	Path  string   `json:"path,omitempty"` // Deprecated: use Paths instead
 	Paths []string `json:"paths,omitempty"`

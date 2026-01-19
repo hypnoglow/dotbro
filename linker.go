@@ -46,7 +46,6 @@ func (l *Linker) Move(ctx context.Context, oldpath, newpath string) error {
 
 // SetSymlink symlinks scrAbs to destAbs.
 func (l *Linker) SetSymlink(srcAbs string, destAbs string) error {
-
 	dir := path.Dir(destAbs)
 	if err := l.os.MkdirAll(dir, 0700); err != nil {
 		return err
