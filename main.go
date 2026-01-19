@@ -15,9 +15,13 @@ var (
 	osfs = new(OSFS)
 )
 
-func main() {
-	ctx := context.Background()
+// App is the main application structure.
+type App struct {
+	logger *slog.Logger
+	config *Configuration
+}
 
+func main() {
 	// Parse arguments
 	args, err := ParseArguments(nil)
 	if err != nil {
@@ -36,66 +40,76 @@ func main() {
 		logLevel = slog.LevelInfo
 	}
 
-	logger := newConsoleLogger(logLevel)
-	logger.Debug("Start.")
-	logger.Debug(fmt.Sprintf("Arguments passed: %+v", args))
+	app := &App{
+		logger: newConsoleLogger(logLevel),
+	}
+	app.Run(args)
+}
+
+// Run runs the main application logic.
+func (a *App) Run(args map[string]any) {
+	ctx := context.Background()
+
+	a.logger.DebugContext(ctx, "Start")
+	a.logger.DebugContext(ctx, "Arguments passed", slog.Any("args", args))
 
 	// Process config
-	configPaths := getConfigPath(ctx, args["--config"], logger)
+	configPaths := a.getConfigPath(ctx, args["--config"])
 
 	for _, configPath := range configPaths {
-		logger.Debug(fmt.Sprintf("Parsing config file %s", configPath))
-		config, err := NewConfiguration(configPath)
+		a.logger.DebugContext(ctx, "Parsing config file", slog.String("path", configPath))
+		var err error
+		a.config, err = NewConfiguration(configPath)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Cannot read configuration from file %s : %s.\n", configPath, err))
-			logger.InfoContext(ctx, "Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Cannot read configuration from file", slog.String("path", configPath), slog.Any("error", err))
+			a.logger.InfoContext(ctx, "Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
+			a.exit(1)
 		}
 
 		// Preparations
-		err = os.MkdirAll(config.Directories.Backup, 0700)
+		err = os.MkdirAll(a.config.Directories.Backup, 0700)
 		if err != nil && !os.IsExist(err) {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error creating backup directory: %s", err))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Error creating backup directory", slog.Any("error", err))
+			a.exit(1)
 		}
 
-		logger.DebugContext(ctx, "Dotfiles root", slog.String("path", config.Directories.Dotfiles))
-		logger.DebugContext(ctx, "Dotfiles src", slog.String("path", config.Directories.Sources))
-		logger.DebugContext(ctx, "Destination dir", slog.String("path", config.Directories.Destination))
+		a.logger.DebugContext(ctx, "Dotfiles root", slog.String("path", a.config.Directories.Dotfiles))
+		a.logger.DebugContext(ctx, "Dotfiles src", slog.String("path", a.config.Directories.Sources))
+		a.logger.DebugContext(ctx, "Destination dir", slog.String("path", a.config.Directories.Destination))
 
 		// Select action
 		switch {
 		case args["add"]:
 			filename := args["<filename>"].(string)
-			if err = addAction(ctx, filename, config, logger); err != nil {
-				logger.ErrorContext(ctx, fmt.Sprintf("%s", err))
-				exit(1, logger)
+			if err = a.addAction(ctx, filename); err != nil {
+				a.logger.ErrorContext(ctx, "Add action failed", slog.Any("error", err))
+				a.exit(1)
 			}
 
-			logger.InfoContext(ctx, "File was successfully added to your dotfiles!", slog.String("path", filename))
-			exit(0, logger)
+			a.logger.InfoContext(ctx, "File was successfully added to your dotfiles!", slog.String("path", filename))
+			a.exit(0)
 		case args["clean"]:
-			if err = cleanAction(ctx, config, logger); err != nil {
-				logger.ErrorContext(ctx, fmt.Sprintf("%s", err))
-				exit(1, logger)
+			if err = a.cleanAction(ctx); err != nil {
+				a.logger.ErrorContext(ctx, "Clean action failed", slog.Any("error", err))
+				a.exit(1)
 			}
 
-			logger.InfoContext(ctx, "\nCleaned!")
-			exit(0, logger)
+			a.logger.InfoContext(ctx, "Cleaned!")
+			a.exit(0)
 		default:
 			// Default action: install
-			if err = installAction(ctx, config, logger); err != nil {
-				logger.ErrorContext(ctx, fmt.Sprintf("%s", err))
-				exit(1, logger)
+			if err = a.installAction(ctx); err != nil {
+				a.logger.ErrorContext(ctx, "Install action failed", slog.Any("error", err))
+				a.exit(1)
 			}
 
-			logger.InfoContext(ctx, "\nAll done (─‿‿─)")
-			exit(0, logger)
+			a.logger.InfoContext(ctx, "All done (─‿‿─)")
+			a.exit(0)
 		}
 	}
 }
 
-func addAction(ctx context.Context, filename string, config *Configuration, logger *slog.Logger) error {
+func (a *App) addAction(ctx context.Context, filename string) error {
 	fileInfo, err := os.Lstat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -112,27 +126,27 @@ func addAction(ctx context.Context, filename string, config *Configuration, logg
 		return fmt.Errorf("Cannot add dir %s - directories are not supported yet.", filename)
 	}
 
-	logger.DebugContext(ctx, "Adding file to dotfiles root",
+	a.logger.DebugContext(ctx, "Adding file to dotfiles root",
 		slog.String("src", filename),
-		slog.String("dst", config.Directories.Dotfiles))
+		slog.String("dst", a.config.Directories.Dotfiles))
 
 	// backup file
-	backupPath := config.Directories.Backup + "/" + path.Base(filename)
+	backupPath := a.config.Directories.Backup + "/" + path.Base(filename)
 	if err = Copy(osfs, filename, backupPath); err != nil {
 		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
 	}
-	logger.InfoContext(ctx, "backup",
+	a.logger.InfoContext(ctx, "backup",
 		slog.String("status", "→"),
 		slog.String("src", filename),
 		slog.String("dst", backupPath))
 
 	// Move file to dotfiles root
-	newPath := config.Directories.Dotfiles + "/" + path.Base(filename)
+	newPath := a.config.Directories.Dotfiles + "/" + path.Base(filename)
 	if err = os.Rename(filename, newPath); err != nil {
 		return err
 	}
 
-	linker := NewLinker(osfs, logger)
+	linker := NewLinker(osfs, a.logger)
 
 	// Add a symlink to the moved file
 	if err = linker.SetSymlink(newPath, filename); err != nil {
@@ -144,58 +158,58 @@ func addAction(ctx context.Context, filename string, config *Configuration, logg
 	return nil
 }
 
-func cleanAction(ctx context.Context, config *Configuration, logger *slog.Logger) error {
-	cleaner := NewCleaner(osfs, logger)
-	if err := cleaner.CleanDeadSymlinks(ctx, config.Directories.Destination); err != nil {
+func (a *App) cleanAction(ctx context.Context) error {
+	cleaner := NewCleaner(osfs, a.logger)
+	if err := cleaner.CleanDeadSymlinks(ctx, a.config.Directories.Destination); err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
 	return nil
 }
 
-func installAction(ctx context.Context, config *Configuration, logger *slog.Logger) error {
+func (a *App) installAction(ctx context.Context) error {
 	// Default action: install
-	cleaner := NewCleaner(osfs, logger)
-	err := cleaner.CleanDeadSymlinks(ctx, config.Directories.Destination)
+	cleaner := NewCleaner(osfs, a.logger)
+	err := cleaner.CleanDeadSymlinks(ctx, a.config.Directories.Destination)
 	if err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
-	srcDirAbs := config.Directories.Dotfiles
-	if config.Directories.Sources != "" {
-		if _, err = os.Stat(config.Directories.Sources); os.IsNotExist(err) {
-			return fmt.Errorf("Sources directory `%s' does not exist.", config.Directories.Sources)
+	srcDirAbs := a.config.Directories.Dotfiles
+	if a.config.Directories.Sources != "" {
+		if _, err = os.Stat(a.config.Directories.Sources); os.IsNotExist(err) {
+			return fmt.Errorf("Sources directory `%s' does not exist.", a.config.Directories.Sources)
 		}
 		if err != nil {
-			return fmt.Errorf("Error reading sources directory `%s': %s", config.Directories.Sources, err)
+			return fmt.Errorf("Error reading sources directory `%s': %s", a.config.Directories.Sources, err)
 		}
-		srcDirAbs += "/" + config.Directories.Sources
+		srcDirAbs += "/" + a.config.Directories.Sources
 	}
 
-	mapping := getMapping(ctx, config, srcDirAbs, logger)
-	linker := NewLinker(osfs, logger)
+	mapping := a.getMapping(ctx, srcDirAbs)
+	linker := NewLinker(osfs, a.logger)
 
-	logger.InfoContext(ctx, "--> Installing dotfiles...")
+	a.logger.InfoContext(ctx, "--> Installing dotfiles...")
 
 	// filter mapping:
 	// - non-existent files
 	// - already installed files
 	filterMapping(mapping, func(src, dst string) bool {
 		srcAbs := path.Join(srcDirAbs, src)
-		destAbs := path.Join(config.Directories.Destination, dst)
+		destAbs := path.Join(a.config.Directories.Destination, dst)
 		if _, err := osfs.Stat(srcAbs); err != nil {
 			if osfs.IsNotExist(err) {
-				logger.WarnContext(ctx, fmt.Sprintf("Source file %s does not exist", srcAbs))
+				a.logger.WarnContext(ctx, "Source file does not exist", slog.String("path", srcAbs))
 				return false
 			}
 
-			logger.ErrorContext(ctx, fmt.Sprintf("Error processing source file %s: %s", src, err))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Error processing source file", slog.String("path", src), slog.Any("error", err))
+			a.exit(1)
 		}
 		needSymlink, err := linker.NeedSymlink(ctx, srcAbs, destAbs)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error processing destination file %s: %s", destAbs, err))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Error processing destination file", slog.String("path", destAbs), slog.Any("error", err))
+			a.exit(1)
 		}
 		return needSymlink
 	})
@@ -204,17 +218,17 @@ func installAction(ctx context.Context, config *Configuration, logger *slog.Logg
 		return nil
 	}
 
-	logger.InfoContext(ctx, "Installing dotfiles",
+	a.logger.InfoContext(ctx, "Installing dotfiles",
 		slog.String("src", srcDirAbs),
-		slog.String("dst", config.Directories.Destination))
+		slog.String("dst", a.config.Directories.Destination))
 	for src, dst := range mapping {
-		installDotfile(ctx, src, dst, linker, config, srcDirAbs, logger)
+		a.installDotfile(ctx, src, dst, linker, srcDirAbs)
 	}
 
 	return nil
 }
 
-func getConfigPath(ctx context.Context, configArg any, logger *slog.Logger) []string {
+func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
 	var configPath string
 	if configArg != nil {
 		configPath = configArg.(string)
@@ -224,19 +238,19 @@ func getConfigPath(ctx context.Context, configArg any, logger *slog.Logger) []st
 
 	// Always load RC file (ignore error if file doesn't exist)
 	if err := rc.Load(); err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Error reading rc file: %s", err))
-		exit(1, logger)
+		a.logger.ErrorContext(ctx, "Error reading rc file", slog.Any("error", err))
+		a.exit(1)
 	}
 
 	// If config param is not passed to dotbro, use paths from RC file.
 	if configPath == "" {
 		paths := rc.GetPaths()
 		if len(paths) == 0 {
-			logger.ErrorContext(ctx, "Config file not specified.")
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Config file not specified.")
+			a.exit(1)
 		}
 
-		logger.DebugContext(ctx, "Got config paths from file", slog.String("path", RCFilepath))
+		a.logger.DebugContext(ctx, "Got config paths from file", slog.String("path", RCFilepath))
 		return paths
 	}
 
@@ -244,43 +258,43 @@ func getConfigPath(ctx context.Context, configArg any, logger *slog.Logger) []st
 	var err error
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Bad config path: %s", err))
-		exit(1, logger)
+		a.logger.ErrorContext(ctx, "Bad config path", slog.Any("error", err))
+		a.exit(1)
 	}
 
 	rc.SetPath(configPath)
 
 	if err = rc.Save(); err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Cannot save rc file: %s", err))
-		exit(1, logger)
+		a.logger.ErrorContext(ctx, "Cannot save rc file", slog.Any("error", err))
+		a.exit(1)
 	}
 
-	logger.DebugContext(ctx, "Saved config path to file", slog.String("path", RCFilepath))
+	a.logger.DebugContext(ctx, "Saved config path to file", slog.String("path", RCFilepath))
 	return []string{configPath}
 }
 
-func getMapping(ctx context.Context, config *Configuration, srcDirAbs string, logger *slog.Logger) map[string]string {
+func (a *App) getMapping(ctx context.Context, srcDirAbs string) map[string]string {
 	mapping := make(map[string]string)
 
-	if len(config.Mapping) == 0 {
+	if len(a.config.Mapping) == 0 {
 		// install all the things
-		logger.DebugContext(ctx, "Mapping is not specified - install all the things")
+		a.logger.DebugContext(ctx, "Mapping is not specified - install all the things")
 		dir, err := os.Open(srcDirAbs)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error reading dotfiles source dir: %s", err))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Error reading dotfiles source dir", slog.Any("error", err))
+			a.exit(1)
 		}
 
 		defer func() {
 			if err = dir.Close(); err != nil {
-				logger.WarnContext(ctx, fmt.Sprintf("Error closing dir %s: %s", srcDirAbs, err.Error()))
+				a.logger.WarnContext(ctx, "Error closing dir", slog.String("path", srcDirAbs), slog.Any("error", err))
 			}
 		}()
 
 		files, err := dir.Readdir(0)
 		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error reading dotfiles source dir: %s", err))
-			exit(1, logger)
+			a.logger.ErrorContext(ctx, "Error reading dotfiles source dir", slog.Any("error", err))
+			a.exit(1)
 		}
 
 		for _, fileInfo := range files {
@@ -288,19 +302,57 @@ func getMapping(ctx context.Context, config *Configuration, srcDirAbs string, lo
 		}
 
 		// filter excludes
-		for _, exclude := range config.Files.Excludes {
+		for _, exclude := range a.config.Files.Excludes {
 			delete(mapping, exclude)
 		}
 	} else {
 		// install by mapping
-		if len(config.Files.Excludes) > 0 {
-			logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
+		if len(a.config.Files.Excludes) > 0 {
+			a.logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
 		}
 
-		mapping = config.Mapping
+		mapping = a.config.Mapping
 	}
 
 	return mapping
+}
+
+func (a *App) installDotfile(ctx context.Context, src, dest string, linker Linker, srcDirAbs string) {
+	srcAbs := path.Join(srcDirAbs, src)
+	destAbs := path.Join(a.config.Directories.Destination, dest)
+
+	needBackup, err := linker.NeedBackup(destAbs)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "Error processing destination file", slog.String("path", destAbs), slog.Any("error", err))
+		a.exit(1)
+	}
+
+	if needBackup {
+		oldpath := destAbs
+		newpath := a.config.Directories.Backup + "/" + dest
+		err = linker.Move(ctx, oldpath, newpath)
+		if err != nil {
+			a.logger.ErrorContext(ctx, "Error on file backup", slog.String("path", oldpath), slog.Any("error", err))
+			a.exit(1)
+		}
+	}
+
+	err = linker.SetSymlink(srcAbs, destAbs)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "Error creating symlink", slog.String("src", srcAbs), slog.String("dst", destAbs), slog.Any("error", err))
+		a.exit(1)
+	}
+
+	a.logger.InfoContext(ctx, "set symlink",
+		slog.String("status", "+"),
+		slog.String("src", src),
+		slog.String("dst", dest))
+}
+
+// exit actually calls os.Exit after logger logs exit message.
+func (a *App) exit(exitCode int) {
+	a.logger.Debug("Exit", slog.Int("code", exitCode))
+	os.Exit(exitCode)
 }
 
 func filterMapping(mapping map[string]string, callback func(src, dst string) bool) {
@@ -309,42 +361,4 @@ func filterMapping(mapping map[string]string, callback func(src, dst string) boo
 			delete(mapping, src)
 		}
 	}
-}
-
-func installDotfile(ctx context.Context, src, dest string, linker Linker, config *Configuration, srcDirAbs string, logger *slog.Logger) {
-	srcAbs := path.Join(srcDirAbs, src)
-	destAbs := path.Join(config.Directories.Destination, dest)
-
-	needBackup, err := linker.NeedBackup(destAbs)
-	if err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Error processing destination file %s: %s", destAbs, err))
-		exit(1, logger)
-	}
-
-	if needBackup {
-		oldpath := destAbs
-		newpath := config.Directories.Backup + "/" + dest
-		err = linker.Move(ctx, oldpath, newpath)
-		if err != nil {
-			logger.ErrorContext(ctx, fmt.Sprintf("Error on file backup %s: %s", oldpath, err))
-			exit(1, logger)
-		}
-	}
-
-	err = linker.SetSymlink(srcAbs, destAbs)
-	if err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Error creating symlink from %s to %s: %s", srcAbs, destAbs, err))
-		exit(1, logger)
-	}
-
-	logger.InfoContext(ctx, "set symlink",
-		slog.String("status", "+"),
-		slog.String("src", src),
-		slog.String("dst", dest))
-}
-
-// exit actually calls os.Exit after logger logs exit message.
-func exit(exitCode int, logger *slog.Logger) {
-	logger.Debug(fmt.Sprintf("Exit with code %d.", exitCode))
-	os.Exit(exitCode)
 }
