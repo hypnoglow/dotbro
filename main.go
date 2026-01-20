@@ -240,31 +240,29 @@ func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
 		configPath = configArg.(string)
 	}
 
-	rc := NewRC()
+	cfg := NewConfig(a.logger)
 
-	// Always load RC file (ignore error if file doesn't exist)
-	a.logger.DebugContext(ctx, "Loading profile", slog.String("path", rc.Filepath()))
-	if err := rc.Load(); err != nil {
-		a.logger.ErrorContext(ctx, "Error reading rc file", slog.Any("error", err))
+	if err := cfg.Load(ctx); err != nil {
+		a.logger.ErrorContext(ctx, "Error reading config file", slog.Any("error", err))
 		a.exit(1)
 	}
 
-	// If config param is not passed to dotbro, use paths from RC file.
+	// If config param is not passed to dotbro, use paths from config file.
 	if configPath == "" {
-		paths := rc.GetPaths()
+		paths := cfg.GetProfilePaths()
 		if len(paths) == 0 {
 			a.logger.ErrorContext(ctx, "Config file not specified.")
 			a.exit(1)
 		}
 
-		a.logger.DebugContext(ctx, "Using config paths from profile", slog.Int("count", len(paths)))
+		a.logger.DebugContext(ctx, "Using config paths", slog.Int("count", len(paths)))
 		for i, p := range paths {
 			a.logger.DebugContext(ctx, "Config path", slog.Int("index", i+1), slog.String("path", p))
 		}
 		return paths
 	}
 
-	// Add new config path to RC file
+	// Add new config path to state config file
 	var err error
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {
@@ -272,14 +270,12 @@ func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
 		a.exit(1)
 	}
 
-	rc.SetPath(configPath)
+	cfg.AddProfile(configPath)
 
-	if err = rc.Save(); err != nil {
-		a.logger.ErrorContext(ctx, "Cannot save rc file", slog.Any("error", err))
+	if err = cfg.Save(ctx); err != nil {
+		a.logger.ErrorContext(ctx, "Cannot save config file", slog.Any("error", err))
 		a.exit(1)
 	}
-
-	a.logger.DebugContext(ctx, "Saved config path to file", slog.String("path", RCFilepath))
 	return []string{configPath}
 }
 
