@@ -9,6 +9,10 @@ deps:
 build:
 	@go build -o ./bin/dotbro .
 
+.PHONY: install
+install:
+	@go install .
+
 .PHONY: test
 test:
 	@go test ./...

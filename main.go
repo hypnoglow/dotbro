@@ -57,7 +57,7 @@ func (a *App) Run(args map[string]any) {
 	configPaths := a.getConfigPath(ctx, args["--config"])
 
 	for _, configPath := range configPaths {
-		a.logger.DebugContext(ctx, "Parsing config file", slog.String("path", configPath))
+		a.logger.DebugContext(ctx, "Loading config file", slog.String("path", configPath))
 		var err error
 		a.config, err = NewConfiguration(configPath)
 		if err != nil {
@@ -73,13 +73,16 @@ func (a *App) Run(args map[string]any) {
 			a.exit(1)
 		}
 
-		a.logger.DebugContext(ctx, "Dotfiles root", slog.String("path", a.config.Directories.Dotfiles))
-		a.logger.DebugContext(ctx, "Dotfiles src", slog.String("path", a.config.Directories.Sources))
-		a.logger.DebugContext(ctx, "Destination dir", slog.String("path", a.config.Directories.Destination))
+		a.logger.DebugContext(ctx, "Config directories",
+			slog.String("dotfiles", a.config.Directories.Dotfiles),
+			slog.String("sources", a.config.Directories.Sources),
+			slog.String("destination", a.config.Directories.Destination),
+			slog.String("backup", a.config.Directories.Backup))
 
 		// Select action
 		switch {
 		case args["add"]:
+			// TODO: add support for multiple configs
 			filename := args["<filename>"].(string)
 			if err = a.addAction(ctx, filename); err != nil {
 				a.logger.ErrorContext(ctx, "Add action failed", slog.Any("error", err))
@@ -87,14 +90,17 @@ func (a *App) Run(args map[string]any) {
 			}
 
 			a.logger.InfoContext(ctx, "File was successfully added to your dotfiles!", slog.String("path", filename))
+			a.logger.InfoContext(ctx, "All done (─‿‿─)")
 			a.exit(0)
 		case args["clean"]:
+			// TODO: add support for multiple configs
 			if err = a.cleanAction(ctx); err != nil {
 				a.logger.ErrorContext(ctx, "Clean action failed", slog.Any("error", err))
 				a.exit(1)
 			}
 
 			a.logger.InfoContext(ctx, "Cleaned!")
+			a.logger.InfoContext(ctx, "All done (─‿‿─)")
 			a.exit(0)
 		default:
 			// Default action: install
@@ -102,11 +108,11 @@ func (a *App) Run(args map[string]any) {
 				a.logger.ErrorContext(ctx, "Install action failed", slog.Any("error", err))
 				a.exit(1)
 			}
-
-			a.logger.InfoContext(ctx, "All done (─‿‿─)")
-			a.exit(0)
 		}
 	}
+
+	a.logger.InfoContext(ctx, "All done (─‿‿─)")
+	a.exit(0)
 }
 
 func (a *App) addAction(ctx context.Context, filename string) error {
@@ -189,7 +195,7 @@ func (a *App) installAction(ctx context.Context) error {
 	mapping := a.getMapping(ctx, srcDirAbs)
 	linker := NewLinker(osfs, a.logger)
 
-	a.logger.InfoContext(ctx, "--> Installing dotfiles...")
+	a.logger.InfoContext(ctx, "--> Installing dotfiles...", slog.String("config", a.config.Filepath))
 
 	// filter mapping:
 	// - non-existent files
@@ -237,6 +243,7 @@ func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
 	rc := NewRC()
 
 	// Always load RC file (ignore error if file doesn't exist)
+	a.logger.DebugContext(ctx, "Loading profile", slog.String("path", rc.Filepath()))
 	if err := rc.Load(); err != nil {
 		a.logger.ErrorContext(ctx, "Error reading rc file", slog.Any("error", err))
 		a.exit(1)
@@ -250,7 +257,10 @@ func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
 			a.exit(1)
 		}
 
-		a.logger.DebugContext(ctx, "Got config paths from file", slog.String("path", RCFilepath))
+		a.logger.DebugContext(ctx, "Using config paths from profile", slog.Int("count", len(paths)))
+		for i, p := range paths {
+			a.logger.DebugContext(ctx, "Config path", slog.Int("index", i+1), slog.String("path", p))
+		}
 		return paths
 	}
 

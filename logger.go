@@ -73,6 +73,21 @@ func newConsoleLogger(level slog.Level) *slog.Logger {
 		Level:      level,
 		TimeFormat: "15:04:05",
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Apply colors to log levels
+			if a.Key == slog.LevelKey {
+				switch a.Value.Any().(slog.Level) {
+				// TODO: tint lib has bug: https://github.com/lmittmann/tint/issues/100
+				// when resolved, uncomment:
+				// case slog.LevelDebug:
+				// return tint.Attr(6, a) // Cyan
+				case slog.LevelInfo:
+					return tint.Attr(4, a) // Blue
+				case slog.LevelWarn:
+					return tint.Attr(3, a) // Yellow
+				case slog.LevelError:
+					return tint.Attr(1, a) // Red
+				}
+			}
 			// Apply semantic colors to specific attributes
 			switch a.Key {
 			case "path", "src", "dst":

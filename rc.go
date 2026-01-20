@@ -27,6 +27,11 @@ func NewRC() *RC {
 	return &RC{}
 }
 
+// Filepath returns the expanded path to the RC file.
+func (rc *RC) Filepath() string {
+	return os.ExpandEnv(RCFilepath)
+}
+
 // SetPath adds config path to the list of paths, avoiding duplicates.
 func (rc *RC) SetPath(configPath string) {
 	if slices.Contains(rc.Config.Paths, configPath) {
