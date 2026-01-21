@@ -18,9 +18,9 @@ func testLogger() *slog.Logger {
 func TestConfig_SetPath(t *testing.T) {
 	cfg := NewConfig(testLogger())
 
-	cfg.AddProfile(testTOMLConfigPath)
+	cfg.AddProfile(testTOMLProfilePath)
 
-	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLConfigPath {
+	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLProfilePath {
 		t.Fatal("Fail to set configPath correctly")
 	}
 }
@@ -28,8 +28,8 @@ func TestConfig_SetPath(t *testing.T) {
 func TestConfig_SetPath_NoDuplicates(t *testing.T) {
 	cfg := NewConfig(testLogger())
 
-	cfg.AddProfile(testTOMLConfigPath)
-	cfg.AddProfile(testTOMLConfigPath)
+	cfg.AddProfile(testTOMLProfilePath)
+	cfg.AddProfile(testTOMLProfilePath)
 
 	if len(cfg.Profiles) != 1 {
 		t.Fatal("SetPath should not add duplicates")
@@ -79,7 +79,7 @@ func TestConfig_LoadExists(t *testing.T) {
 	os.Remove(testLegacyConfigPath)
 
 	setupCfg := NewConfig(testLogger())
-	setupCfg.AddProfile(testTOMLConfigPath)
+	setupCfg.AddProfile(testTOMLProfilePath)
 
 	f, err := os.Create(configFilepath)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestConfig_LoadExists(t *testing.T) {
 	}
 
 	// validate
-	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLConfigPath {
+	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLProfilePath {
 		t.Fatal("Failed to load Config correctly")
 	}
 
@@ -116,7 +116,7 @@ func TestConfig_Save(t *testing.T) {
 	cfg := NewConfig(testLogger())
 	ctx := context.Background()
 
-	cfg.AddProfile(testTOMLConfigPath)
+	cfg.AddProfile(testTOMLProfilePath)
 
 	if err := cfg.Save(ctx); err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func TestConfig_Save(t *testing.T) {
 	}
 	f.Close()
 
-	if len(loadedCfg.Profiles) != 1 || loadedCfg.Profiles[0].Path != testTOMLConfigPath {
+	if len(loadedCfg.Profiles) != 1 || loadedCfg.Profiles[0].Path != testTOMLProfilePath {
 		t.Fatal("Failed to save Config correctly")
 	}
 
@@ -155,8 +155,8 @@ func TestConfig_LoadMigration(t *testing.T) {
 	// Create legacy format file
 	legacy := legacyRC{
 		Config: legacyRCConfig{
-			Path:  testTOMLConfigPath,
-			Paths: []string{testTOMLConfigPath, "/another/path"},
+			Path:  testTOMLProfilePath,
+			Paths: []string{testTOMLProfilePath, "/another/path"},
 		},
 	}
 
@@ -191,7 +191,7 @@ func TestConfig_LoadMigration(t *testing.T) {
 		t.Fatalf("Expected 2 profiles after migration, got %d", len(cfg.Profiles))
 	}
 
-	if cfg.Profiles[0].Path != testTOMLConfigPath {
+	if cfg.Profiles[0].Path != testTOMLProfilePath {
 		t.Fatal("Failed to load migrated Config correctly")
 	}
 
@@ -215,7 +215,7 @@ func TestConfig_LoadMigrationFromSinglePath(t *testing.T) {
 	// Create legacy format file with only Path field (no Paths array)
 	legacy := legacyRC{
 		Config: legacyRCConfig{
-			Path: testTOMLConfigPath,
+			Path: testTOMLProfilePath,
 		},
 	}
 
@@ -242,7 +242,7 @@ func TestConfig_LoadMigrationFromSinglePath(t *testing.T) {
 		t.Fatalf("Expected 1 profile after migration from single Path, got %d", len(cfg.Profiles))
 	}
 
-	if cfg.Profiles[0].Path != testTOMLConfigPath {
+	if cfg.Profiles[0].Path != testTOMLProfilePath {
 		t.Fatal("Failed to load migrated Config correctly")
 	}
 

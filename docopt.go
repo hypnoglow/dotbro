@@ -15,7 +15,7 @@ Usage:
   dotbro --version
 
 Common options:
-  -c --config=<filepath>  Dotbro's configuration file in JSON or TOML format.
+  -c --config=<filepath>  Dotbro profile file in JSON or TOML format.
   -q --quiet              Quiet mode. Do not print any output, except warnings
                           and errors.
   -v --verbose            Verbose mode. Detailed output.

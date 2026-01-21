@@ -17,8 +17,8 @@ var (
 
 // App is the main application structure.
 type App struct {
-	logger *slog.Logger
-	config *Configuration
+	logger  *slog.Logger
+	profile *Profile
 }
 
 func main() {
@@ -53,31 +53,31 @@ func (a *App) Run(args map[string]any) {
 	a.logger.DebugContext(ctx, "Start")
 	a.logger.DebugContext(ctx, "Arguments passed", slog.Any("args", args))
 
-	// Process config
-	configPaths := a.getConfigPath(ctx, args["--config"])
+	// Process profiles
+	profilePaths := a.getProfilePaths(ctx, args["--config"])
 
-	for _, configPath := range configPaths {
-		a.logger.DebugContext(ctx, "Loading config file", slog.String("path", configPath))
+	for _, profilePath := range profilePaths {
+		a.logger.DebugContext(ctx, "Loading profile", slog.String("path", profilePath))
 		var err error
-		a.config, err = NewConfiguration(configPath)
+		a.profile, err = NewProfile(profilePath)
 		if err != nil {
-			a.logger.ErrorContext(ctx, "Cannot read configuration from file", slog.String("path", configPath), slog.Any("error", err))
-			a.logger.InfoContext(ctx, "Maybe you have renamed your config file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
+			a.logger.ErrorContext(ctx, "Cannot read profile", slog.String("path", profilePath), slog.Any("error", err))
+			a.logger.InfoContext(ctx, "Maybe you have renamed your profile file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
 			a.exit(1)
 		}
 
 		// Preparations
-		err = os.MkdirAll(a.config.Directories.Backup, 0700)
+		err = os.MkdirAll(a.profile.Directories.Backup, 0700)
 		if err != nil && !os.IsExist(err) {
 			a.logger.ErrorContext(ctx, "Error creating backup directory", slog.Any("error", err))
 			a.exit(1)
 		}
 
-		a.logger.DebugContext(ctx, "Config directories",
-			slog.String("dotfiles", a.config.Directories.Dotfiles),
-			slog.String("sources", a.config.Directories.Sources),
-			slog.String("destination", a.config.Directories.Destination),
-			slog.String("backup", a.config.Directories.Backup))
+		a.logger.DebugContext(ctx, "Profile directories",
+			slog.String("dotfiles", a.profile.Directories.Dotfiles),
+			slog.String("sources", a.profile.Directories.Sources),
+			slog.String("destination", a.profile.Directories.Destination),
+			slog.String("backup", a.profile.Directories.Backup))
 
 		// Select action
 		switch {
@@ -134,10 +134,10 @@ func (a *App) addAction(ctx context.Context, filename string) error {
 
 	a.logger.DebugContext(ctx, "Adding file to dotfiles root",
 		slog.String("src", filename),
-		slog.String("dst", a.config.Directories.Dotfiles))
+		slog.String("dst", a.profile.Directories.Dotfiles))
 
 	// backup file
-	backupPath := a.config.Directories.Backup + "/" + path.Base(filename)
+	backupPath := a.profile.Directories.Backup + "/" + path.Base(filename)
 	if err = Copy(osfs, filename, backupPath); err != nil {
 		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
 	}
@@ -147,7 +147,7 @@ func (a *App) addAction(ctx context.Context, filename string) error {
 		slog.String("dst", backupPath))
 
 	// Move file to dotfiles root
-	newPath := a.config.Directories.Dotfiles + "/" + path.Base(filename)
+	newPath := a.profile.Directories.Dotfiles + "/" + path.Base(filename)
 	if err = os.Rename(filename, newPath); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (a *App) addAction(ctx context.Context, filename string) error {
 
 func (a *App) cleanAction(ctx context.Context) error {
 	cleaner := NewCleaner(osfs, a.logger)
-	if err := cleaner.CleanDeadSymlinks(ctx, a.config.Directories.Destination); err != nil {
+	if err := cleaner.CleanDeadSymlinks(ctx, a.profile.Directories.Destination); err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
@@ -176,33 +176,33 @@ func (a *App) cleanAction(ctx context.Context) error {
 func (a *App) installAction(ctx context.Context) error {
 	// Default action: install
 	cleaner := NewCleaner(osfs, a.logger)
-	err := cleaner.CleanDeadSymlinks(ctx, a.config.Directories.Destination)
+	err := cleaner.CleanDeadSymlinks(ctx, a.profile.Directories.Destination)
 	if err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
-	srcDirAbs := a.config.Directories.Dotfiles
-	if a.config.Directories.Sources != "" {
-		if _, err = os.Stat(a.config.Directories.Sources); os.IsNotExist(err) {
-			return fmt.Errorf("Sources directory `%s' does not exist.", a.config.Directories.Sources)
+	srcDirAbs := a.profile.Directories.Dotfiles
+	if a.profile.Directories.Sources != "" {
+		if _, err = os.Stat(a.profile.Directories.Sources); os.IsNotExist(err) {
+			return fmt.Errorf("Sources directory `%s' does not exist.", a.profile.Directories.Sources)
 		}
 		if err != nil {
-			return fmt.Errorf("Error reading sources directory `%s': %s", a.config.Directories.Sources, err)
+			return fmt.Errorf("Error reading sources directory `%s': %s", a.profile.Directories.Sources, err)
 		}
-		srcDirAbs += "/" + a.config.Directories.Sources
+		srcDirAbs += "/" + a.profile.Directories.Sources
 	}
 
 	mapping := a.getMapping(ctx, srcDirAbs)
 	linker := NewLinker(osfs, a.logger)
 
-	a.logger.InfoContext(ctx, "--> Installing dotfiles...", slog.String("config", a.config.Filepath))
+	a.logger.InfoContext(ctx, "--> Installing dotfiles...", slog.String("profile", a.profile.Filepath))
 
 	// filter mapping:
 	// - non-existent files
 	// - already installed files
 	filterMapping(mapping, func(src, dst string) bool {
 		srcAbs := path.Join(srcDirAbs, src)
-		destAbs := path.Join(a.config.Directories.Destination, dst)
+		destAbs := path.Join(a.profile.Directories.Destination, dst)
 		if _, err := osfs.Stat(srcAbs); err != nil {
 			if osfs.IsNotExist(err) {
 				a.logger.WarnContext(ctx, "Source file does not exist", slog.String("path", srcAbs))
@@ -226,7 +226,7 @@ func (a *App) installAction(ctx context.Context) error {
 
 	a.logger.InfoContext(ctx, "Installing dotfiles",
 		slog.String("src", srcDirAbs),
-		slog.String("dst", a.config.Directories.Destination))
+		slog.String("dst", a.profile.Directories.Destination))
 	for src, dst := range mapping {
 		a.installDotfile(ctx, src, dst, linker, srcDirAbs)
 	}
@@ -234,55 +234,55 @@ func (a *App) installAction(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) getConfigPath(ctx context.Context, configArg any) []string {
-	var configPath string
-	if configArg != nil {
-		configPath = configArg.(string)
+func (a *App) getProfilePaths(ctx context.Context, profileArg any) []string {
+	var profilePath string
+	if profileArg != nil {
+		profilePath = profileArg.(string)
 	}
 
 	cfg := NewConfig(a.logger)
 
 	if err := cfg.Load(ctx); err != nil {
-		a.logger.ErrorContext(ctx, "Error reading config file", slog.Any("error", err))
+		a.logger.ErrorContext(ctx, "Error reading config", slog.Any("error", err))
 		a.exit(1)
 	}
 
-	// If config param is not passed to dotbro, use paths from config file.
-	if configPath == "" {
+	// If profile path is not passed to dotbro, use paths from config.
+	if profilePath == "" {
 		paths := cfg.GetProfilePaths()
 		if len(paths) == 0 {
-			a.logger.ErrorContext(ctx, "Config file not specified.")
+			a.logger.ErrorContext(ctx, "Profile not specified.")
 			a.exit(1)
 		}
 
-		a.logger.DebugContext(ctx, "Using config paths", slog.Int("count", len(paths)))
+		a.logger.DebugContext(ctx, "Using profile paths from config", slog.Int("count", len(paths)))
 		for i, p := range paths {
-			a.logger.DebugContext(ctx, "Config path", slog.Int("index", i+1), slog.String("path", p))
+			a.logger.DebugContext(ctx, "Profile path", slog.Int("index", i+1), slog.String("path", p))
 		}
 		return paths
 	}
 
-	// Add new config path to state config file
+	// Add new profile path to config
 	var err error
-	configPath, err = filepath.Abs(configPath)
+	profilePath, err = filepath.Abs(profilePath)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "Bad config path", slog.Any("error", err))
+		a.logger.ErrorContext(ctx, "Bad profile path", slog.Any("error", err))
 		a.exit(1)
 	}
 
-	cfg.AddProfile(configPath)
+	cfg.AddProfile(profilePath)
 
 	if err = cfg.Save(ctx); err != nil {
-		a.logger.ErrorContext(ctx, "Cannot save config file", slog.Any("error", err))
+		a.logger.ErrorContext(ctx, "Cannot save config", slog.Any("error", err))
 		a.exit(1)
 	}
-	return []string{configPath}
+	return []string{profilePath}
 }
 
 func (a *App) getMapping(ctx context.Context, srcDirAbs string) map[string]string {
 	mapping := make(map[string]string)
 
-	if len(a.config.Mapping) == 0 {
+	if len(a.profile.Mapping) == 0 {
 		// install all the things
 		a.logger.DebugContext(ctx, "Mapping is not specified - install all the things")
 		dir, err := os.Open(srcDirAbs)
@@ -308,16 +308,16 @@ func (a *App) getMapping(ctx context.Context, srcDirAbs string) map[string]strin
 		}
 
 		// filter excludes
-		for _, exclude := range a.config.Files.Excludes {
+		for _, exclude := range a.profile.Files.Excludes {
 			delete(mapping, exclude)
 		}
 	} else {
 		// install by mapping
-		if len(a.config.Files.Excludes) > 0 {
+		if len(a.profile.Files.Excludes) > 0 {
 			a.logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
 		}
 
-		mapping = a.config.Mapping
+		mapping = a.profile.Mapping
 	}
 
 	return mapping
@@ -325,7 +325,7 @@ func (a *App) getMapping(ctx context.Context, srcDirAbs string) map[string]strin
 
 func (a *App) installDotfile(ctx context.Context, src, dest string, linker Linker, srcDirAbs string) {
 	srcAbs := path.Join(srcDirAbs, src)
-	destAbs := path.Join(a.config.Directories.Destination, dest)
+	destAbs := path.Join(a.profile.Directories.Destination, dest)
 
 	needBackup, err := linker.NeedBackup(destAbs)
 	if err != nil {
@@ -335,7 +335,7 @@ func (a *App) installDotfile(ctx context.Context, src, dest string, linker Linke
 
 	if needBackup {
 		oldpath := destAbs
-		newpath := a.config.Directories.Backup + "/" + dest
+		newpath := a.profile.Directories.Backup + "/" + dest
 		err = linker.Move(ctx, oldpath, newpath)
 		if err != nil {
 			a.logger.ErrorContext(ctx, "Error on file backup", slog.String("path", oldpath), slog.Any("error", err))

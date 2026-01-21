@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,15 +12,15 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Configuration represents data from config file and additional parameters.
-type Configuration struct {
+// Profile represents data from a profile file and additional parameters.
+type Profile struct {
 	Directories Directories
 	Mapping     map[string]string
 	Files       Files
 	Filepath    string
 }
 
-// Directories represents [directories] section of a config.
+// Directories represents [directories] section of a profile.
 type Directories struct {
 	Dotfiles    string `toml:"dotfiles" json:"dotfiles"`
 	Sources     string `toml:"sources" json:"sources"`
@@ -29,61 +28,61 @@ type Directories struct {
 	Backup      string `toml:"backup" json:"backup"`
 }
 
-// Files represents [files] section of a config.
+// Files represents [files] section of a profile.
 type Files struct {
 	Excludes []string
 }
 
-// NewConfiguration returns a new Configuration.
-func NewConfiguration(filename string) (conf *Configuration, err error) {
+// NewProfile returns a new Profile.
+func NewProfile(filename string) (p *Profile, err error) {
 	switch filepath.Ext(filename) {
 	case ".toml":
-		conf, err = fromTOML(filename)
+		p, err = profileFromTOML(filename)
 	case ".json":
-		conf, err = fromJSON(filename)
+		p, err = profileFromJSON(filename)
 	default:
-		err = fmt.Errorf("Cannot read config file %s : unknown extension. Supported: conf, toml.", filename)
+		err = fmt.Errorf("unknown profile file extension %s: supported extensions are .toml and .json", filename)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err = processConf(conf)
+	p, err = processProfile(p)
 	if err != nil {
 		return nil, err
 	}
 
-	conf.Filepath = filename
-	return conf, nil
+	p.Filepath = filename
+	return p, nil
 }
 
-func fromTOML(filename string) (conf *Configuration, err error) {
-	if _, err = toml.DecodeFile(filename, &conf); err != nil {
+func profileFromTOML(filename string) (p *Profile, err error) {
+	if _, err = toml.DecodeFile(filename, &p); err != nil {
 		return nil, err
 	}
 
-	return conf, nil
+	return p, nil
 }
 
-func fromJSON(filename string) (conf *Configuration, err error) {
-	file, err := ioutil.ReadFile(filename)
+func profileFromJSON(filename string) (p *Profile, err error) {
+	file, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = json.Unmarshal(file, &conf); err != nil {
+	if err = json.Unmarshal(file, &p); err != nil {
 		return nil, err
 	}
 
-	return conf, nil
+	return p, nil
 }
 
-func processConf(c *Configuration) (*Configuration, error) {
-	params := getDirectoriesParams(c.Filepath)
+func processProfile(p *Profile) (*Profile, error) {
+	params := getDirectoriesParams(p.Filepath)
 
-	t := reflect.TypeOf(c.Directories)
-	r := reflect.ValueOf(&c.Directories).Elem()
+	t := reflect.TypeOf(p.Directories)
+	r := reflect.ValueOf(&p.Directories).Elem()
 
 	for i := 0; i < r.NumField(); i++ {
 		name := t.Field(i).Name
@@ -102,7 +101,7 @@ func processConf(c *Configuration) (*Configuration, error) {
 		field.SetString(value)
 	}
 
-	return c, nil
+	return p, nil
 }
 
 type directoryParam struct {
@@ -110,10 +109,10 @@ type directoryParam struct {
 	isRelative   bool
 }
 
-func getDirectoriesParams(configPath string) map[string]directoryParam {
+func getDirectoriesParams(profilePath string) map[string]directoryParam {
 	params := map[string]directoryParam{
 		"Dotfiles": {
-			defaultValue: path.Dir(configPath),
+			defaultValue: path.Dir(profilePath),
 			isRelative:   false,
 		},
 		"Sources": {

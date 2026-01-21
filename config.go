@@ -17,13 +17,13 @@ var legacyConfigFilepath = "${HOME}/.dotbro/profile.json"
 
 // Config represents dotbro config.
 type Config struct {
-	Profiles []Profile `json:"profiles"`
+	Profiles []ConfigProfile `json:"profiles"`
 
 	logger *slog.Logger `json:"-"`
 }
 
-// Profile represents a single profile entry.
-type Profile struct {
+// ConfigProfile represents a single profile entry in the config.
+type ConfigProfile struct {
 	Path string `json:"path"`
 }
 
@@ -49,7 +49,7 @@ func (c *Config) AddProfile(path string) {
 			return
 		}
 	}
-	c.Profiles = append(c.Profiles, Profile{Path: path})
+	c.Profiles = append(c.Profiles, ConfigProfile{Path: path})
 }
 
 // GetProfilePaths returns all configured profile paths.
@@ -147,6 +147,6 @@ func (c *Config) migrateFromLegacy(legacy *legacyRC) {
 	}
 
 	for _, p := range paths {
-		c.Profiles = append(c.Profiles, Profile{Path: p})
+		c.Profiles = append(c.Profiles, ConfigProfile{Path: p})
 	}
 }
