@@ -1,8 +1,7 @@
 # dotbro - simple yet effective dotfiles manager.
 
-[![GitHub Actions](https://github.com/hypnoglow/dotbro/actions/workflows/main.yaml/badge.svg?branch=master)](https://github.com/hypnoglow/dotbro/actions)
+[![CI](https://github.com/hypnoglow/dotbro/actions/workflows/ci.yaml/badge.svg)](https://github.com/hypnoglow/dotbro/actions/workflows/ci.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hypnoglow/dotbro)](https://goreportcard.com/report/github.com/hypnoglow/dotbro)
-[![codebeat badge](https://codebeat.co/badges/4c0586d0-1771-4751-b332-c9f0582ccddd)](https://codebeat.co/projects/github-com-hypnoglow-dotbro)
 
 Dotbro is a tool which helps you install and keep your dotfiles up to date.
 
