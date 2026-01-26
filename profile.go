@@ -37,6 +37,7 @@ type Directories struct {
 	Dotfiles string `toml:"dotfiles" json:"dotfiles"`
 
 	// Sources is a subdirectory within Dotfiles containing actual dotfiles.
+	//
 	// Deprecated: use Dotfiles directly.
 	Sources string `toml:"sources" json:"sources"`
 
@@ -97,6 +98,7 @@ func (p Profile) DotfilesDir() string {
 }
 
 // SourcesDir returns the sources subdirectory path.
+//
 // Deprecated: use DotfilesDir directly.
 func (p Profile) SourcesDir() string {
 	return p.data.Directories.Sources
