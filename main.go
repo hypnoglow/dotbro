@@ -240,7 +240,11 @@ func (app *App) getProfilePaths(ctx context.Context, profileArg any) []string {
 		profilePath = profileArg.(string)
 	}
 
-	cfg := NewConfig(app.logger)
+	cfg := NewConfig(
+		app.logger,
+		defaultConfigFilepath,
+		defaultLegacyConfigFilepath,
+	)
 
 	if err := cfg.Load(ctx); err != nil {
 		app.logger.ErrorContext(ctx, "Error reading config", slog.Any("error", err))

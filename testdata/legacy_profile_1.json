@@ -1,0 +1,6 @@
+{
+  "config": {
+    "path": "/old/path",
+    "paths": ["/first/path", "/second/path"]
+  }
+}

@@ -1,251 +1,159 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"log/slog"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const testConfigPath = "/tmp/dotbro_config.json"
-const testLegacyConfigPath = "/tmp/dotbro_legacy_profile.json"
+func TestConfig_AddProfile(t *testing.T) {
+	t.Parallel()
 
-func testLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	conf := NewConfig(newDiscardLogger(), "", "")
+
+	conf.AddProfile("/some/path")
+
+	require.Len(t, conf.data.Profiles, 1)
+	assert.Equal(t, "/some/path", conf.data.Profiles[0].Path)
 }
 
-func TestConfig_SetPath(t *testing.T) {
-	cfg := NewConfig(testLogger())
+func TestConfig_AddProfile_NoDuplicates(t *testing.T) {
+	t.Parallel()
 
-	cfg.AddProfile(testTOMLProfilePath)
+	conf := NewConfig(newDiscardLogger(), "", "")
 
-	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLProfilePath {
-		t.Fatal("Fail to set configPath correctly")
-	}
+	conf.AddProfile("/some/path")
+	conf.AddProfile("/some/path")
+
+	assert.Len(t, conf.data.Profiles, 1)
 }
 
-func TestConfig_SetPath_NoDuplicates(t *testing.T) {
-	cfg := NewConfig(testLogger())
+func TestConfig_GetProfilePaths(t *testing.T) {
+	t.Parallel()
 
-	cfg.AddProfile(testTOMLProfilePath)
-	cfg.AddProfile(testTOMLProfilePath)
+	conf := NewConfig(newDiscardLogger(), "", "")
+	conf.AddProfile("/path/one")
+	conf.AddProfile("/path/two")
 
-	if len(cfg.Profiles) != 1 {
-		t.Fatal("SetPath should not add duplicates")
-	}
+	paths := conf.GetProfilePaths()
+
+	require.Len(t, paths, 2)
+	assert.Equal(t, "/path/one", paths[0])
+	assert.Equal(t, "/path/two", paths[1])
 }
 
-func TestConfig_GetPaths(t *testing.T) {
-	cfg := NewConfig(testLogger())
-	cfg.AddProfile("/path/one")
-	cfg.AddProfile("/path/two")
+func TestConfig_Load_NotExists(t *testing.T) {
+	t.Parallel()
 
-	paths := cfg.GetProfilePaths()
+	conf := NewConfig(
+		newDiscardLogger(),
+		"testdata/non_existent_config.json",
+		"testdata/non_existent_profile.json",
+	)
 
-	if len(paths) != 2 || paths[0] != "/path/one" || paths[1] != "/path/two" {
-		t.Fatal("GetPaths returned incorrect paths")
-	}
+	require.NoError(t, conf.Load(t.Context()))
+	assert.Empty(t, conf.data.Profiles)
 }
 
-func TestConfig_LoadNotExists(t *testing.T) {
-	// set up
-	configFilepath = testConfigPath
-	legacyConfigFilepath = testLegacyConfigPath
+func TestConfig_Load_Exists(t *testing.T) {
+	t.Parallel()
 
-	// ensure files don't exist
-	os.Remove(testConfigPath)
-	os.Remove(testLegacyConfigPath)
+	conf := NewConfig(
+		newDiscardLogger(),
+		"testdata/config.json",
+		"testdata/non_existent_profile.json",
+	)
 
-	// test
-	cfg := NewConfig(testLogger())
-	ctx := context.Background()
+	require.NoError(t, conf.Load(t.Context()))
 
-	if err := cfg.Load(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(cfg.Profiles) != 0 {
-		t.Fatal("Expected empty profiles when no config exists")
-	}
+	require.Len(t, conf.data.Profiles, 1)
+	assert.Equal(t, "/test/profile/path", conf.data.Profiles[0].Path)
 }
 
-func TestConfig_LoadExists(t *testing.T) {
-	// set up
-	configFilepath = testConfigPath
-	legacyConfigFilepath = testLegacyConfigPath
+func TestConfig_Load_MigrationPaths(t *testing.T) {
+	t.Parallel()
 
-	// ensure legacy file doesn't exist
-	os.Remove(testLegacyConfigPath)
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.json")
+	legacyPath := filepath.Join(tmpDir, "profile.json")
 
-	setupCfg := NewConfig(testLogger())
-	setupCfg.AddProfile(testTOMLProfilePath)
+	copyFile(t, "testdata/legacy_profile_1.json", legacyPath)
 
-	f, err := os.Create(configFilepath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	conf := NewConfig(newDiscardLogger(), configPath, legacyPath)
 
-	if err = json.NewEncoder(f).Encode(setupCfg); err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
+	require.NoError(t, conf.Load(t.Context()))
 
-	// test
-	cfg := NewConfig(testLogger())
-	ctx := context.Background()
+	// Validate - config.json should exist, profile.json should not
+	assert.FileExists(t, configPath)
+	assert.NoFileExists(t, legacyPath)
 
-	if err := cfg.Load(ctx); err != nil {
-		t.Fatal(err)
-	}
+	require.Len(t, conf.data.Profiles, 2)
+	assert.Equal(t, "/first/path", conf.data.Profiles[0].Path)
+	assert.Equal(t, "/second/path", conf.data.Profiles[1].Path)
+}
 
-	// validate
-	if len(cfg.Profiles) != 1 || cfg.Profiles[0].Path != testTOMLProfilePath {
-		t.Fatal("Failed to load Config correctly")
-	}
+func TestConfig_Load_MigrationPath(t *testing.T) {
+	t.Parallel()
 
-	// tear down
-	os.Remove(configFilepath)
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.json")
+	legacyPath := filepath.Join(tmpDir, "profile.json")
+
+	copyFile(t, "testdata/legacy_profile_2.json", legacyPath)
+
+	conf := NewConfig(newDiscardLogger(), configPath, legacyPath)
+
+	require.NoError(t, conf.Load(t.Context()))
+
+	// Validate - config.json should exist, profile.json should not
+	assert.FileExists(t, configPath)
+	assert.NoFileExists(t, legacyPath)
+
+	require.Len(t, conf.data.Profiles, 1)
+	assert.Equal(t, "/one/path", conf.data.Profiles[0].Path)
 }
 
 func TestConfig_Save(t *testing.T) {
-	// set up
-	configFilepath = testConfigPath
+	t.Parallel()
 
-	// test
-	cfg := NewConfig(testLogger())
-	ctx := context.Background()
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.json")
 
-	cfg.AddProfile(testTOMLProfilePath)
+	conf := NewConfig(newDiscardLogger(), configPath, "")
 
-	if err := cfg.Save(ctx); err != nil {
-		t.Fatal(err)
-	}
+	conf.AddProfile("/test/profile/path")
 
-	// validate
-	loadedCfg := NewConfig(testLogger())
+	require.NoError(t, conf.Save(t.Context()))
 
-	f, err := os.Open(configFilepath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Validate
 
-	if err = json.NewDecoder(f).Decode(loadedCfg); err != nil {
-		t.Fatal(err)
-	}
+	var data ConfigData
+
+	f, err := os.Open(configPath)
+	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(f).Decode(&data))
 	f.Close()
 
-	if len(loadedCfg.Profiles) != 1 || loadedCfg.Profiles[0].Path != testTOMLProfilePath {
-		t.Fatal("Failed to save Config correctly")
-	}
-
-	// tear down
-	os.Remove(configFilepath)
+	require.Len(t, data.Profiles, 1)
+	assert.Equal(t, "/test/profile/path", data.Profiles[0].Path)
 }
 
-func TestConfig_LoadMigration(t *testing.T) {
-	// set up - create legacy profile.json
-	configFilepath = testConfigPath
-	legacyConfigFilepath = testLegacyConfigPath
+func copyFile(t *testing.T, src, dst string) {
+	t.Helper()
 
-	// Clean up any existing files
-	os.Remove(testConfigPath)
-	os.Remove(testLegacyConfigPath)
+	srcFile, err := os.Open(src)
+	require.NoError(t, err)
+	defer srcFile.Close()
 
-	// Create legacy format file
-	legacy := legacyRC{
-		Config: legacyRCConfig{
-			Path:  testTOMLProfilePath,
-			Paths: []string{testTOMLProfilePath, "/another/path"},
-		},
-	}
+	dstFile, err := os.Create(dst)
+	require.NoError(t, err)
+	defer dstFile.Close()
 
-	f, err := os.Create(testLegacyConfigPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = json.NewEncoder(f).Encode(legacy); err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
-
-	// test - Load should migrate legacy file to new location
-	cfg := NewConfig(testLogger())
-	ctx := context.Background()
-
-	if err := cfg.Load(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	// validate - config.json should exist, profile.json should not
-	if _, err := os.Stat(testConfigPath); os.IsNotExist(err) {
-		t.Fatal("config.json should exist after migration")
-	}
-
-	if _, err := os.Stat(testLegacyConfigPath); !os.IsNotExist(err) {
-		t.Fatal("profile.json should not exist after migration")
-	}
-
-	if len(cfg.Profiles) != 2 {
-		t.Fatalf("Expected 2 profiles after migration, got %d", len(cfg.Profiles))
-	}
-
-	if cfg.Profiles[0].Path != testTOMLProfilePath {
-		t.Fatal("Failed to load migrated Config correctly")
-	}
-
-	if cfg.Profiles[1].Path != "/another/path" {
-		t.Fatal("Failed to load second path from migrated Config")
-	}
-
-	// tear down
-	os.Remove(testConfigPath)
-}
-
-func TestConfig_LoadMigrationFromSinglePath(t *testing.T) {
-	// set up - create legacy profile.json with only Path field (old format)
-	configFilepath = testConfigPath
-	legacyConfigFilepath = testLegacyConfigPath
-
-	// Clean up any existing files
-	os.Remove(testConfigPath)
-	os.Remove(testLegacyConfigPath)
-
-	// Create legacy format file with only Path field (no Paths array)
-	legacy := legacyRC{
-		Config: legacyRCConfig{
-			Path: testTOMLProfilePath,
-		},
-	}
-
-	f, err := os.Create(testLegacyConfigPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = json.NewEncoder(f).Encode(legacy); err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
-
-	// test - Load should migrate legacy file
-	cfg := NewConfig(testLogger())
-	ctx := context.Background()
-
-	if err := cfg.Load(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	// validate
-	if len(cfg.Profiles) != 1 {
-		t.Fatalf("Expected 1 profile after migration from single Path, got %d", len(cfg.Profiles))
-	}
-
-	if cfg.Profiles[0].Path != testTOMLProfilePath {
-		t.Fatal("Failed to load migrated Config correctly")
-	}
-
-	// tear down
-	os.Remove(testConfigPath)
+	_, err = io.Copy(dstFile, srcFile)
+	require.NoError(t, err)
 }

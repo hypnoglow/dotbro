@@ -9,17 +9,23 @@ import (
 	"path/filepath"
 )
 
-// configFilepath is path to dotbro config file.
-var configFilepath = "${HOME}/.dotbro/config.json"
+// defaultConfigFilepath is path to dotbro config file.
+const defaultConfigFilepath = "${HOME}/.dotbro/config.json"
 
-// legacyConfigFilepath is the old config file path for backward compatibility migration.
-var legacyConfigFilepath = "${HOME}/.dotbro/profile.json"
+// defaultLegacyConfigFilepath is the old config file path for backward compatibility migration.
+const defaultLegacyConfigFilepath = "${HOME}/.dotbro/profile.json"
 
 // Config represents dotbro config.
 type Config struct {
-	Profiles []ConfigProfile `json:"profiles"`
+	logger           *slog.Logger
+	configPath       string
+	legacyConfigPath string
+	data             ConfigData
+}
 
-	logger *slog.Logger `json:"-"`
+// ConfigData represents the JSON representation of the config file.
+type ConfigData struct {
+	Profiles []ConfigProfile `json:"profiles"`
 }
 
 // ConfigProfile represents a single profile entry in the config.
@@ -27,51 +33,52 @@ type ConfigProfile struct {
 	Path string `json:"path"`
 }
 
-// legacyRC represents old profile.json format for migration.
-type legacyRC struct {
-	Config legacyRCConfig `json:"config"`
+// legacyConfigData represents old profile.json format for migration.
+type legacyConfigData struct {
+	Config legacyConfigDataConfig `json:"config"`
 }
 
-type legacyRCConfig struct {
+type legacyConfigDataConfig struct {
 	Path  string   `json:"path,omitempty"`
 	Paths []string `json:"paths,omitempty"`
 }
 
 // NewConfig returns a new Config.
-func NewConfig(logger *slog.Logger) *Config {
-	return &Config{logger: logger}
+func NewConfig(logger *slog.Logger, configPath, legacyConfigPath string) *Config {
+	return &Config{
+		logger:           logger,
+		configPath:       os.ExpandEnv(configPath),
+		legacyConfigPath: os.ExpandEnv(legacyConfigPath),
+	}
 }
 
 // AddProfile adds a profile to the list, avoiding duplicates.
 func (c *Config) AddProfile(path string) {
-	for _, p := range c.Profiles {
+	for _, p := range c.data.Profiles {
 		if p.Path == path {
 			return
 		}
 	}
-	c.Profiles = append(c.Profiles, ConfigProfile{Path: path})
+	c.data.Profiles = append(c.data.Profiles, ConfigProfile{Path: path})
 }
 
 // GetProfilePaths returns all configured profile paths.
 func (c *Config) GetProfilePaths() []string {
-	paths := make([]string, 0, len(c.Profiles))
-	for _, p := range c.Profiles {
+	paths := make([]string, 0, len(c.data.Profiles))
+	for _, p := range c.data.Profiles {
 		paths = append(paths, p.Path)
 	}
 	return paths
 }
 
-// Load reads Config data from configFilepath.
+// Load reads Config data from config file.
 // It maintains backward compatibility by migrating old profile.json format.
 func (c *Config) Load(ctx context.Context) error {
-	configFile := os.ExpandEnv(configFilepath)
-	legacyFile := os.ExpandEnv(legacyConfigFilepath)
-
 	// Try to load new format first
-	data, err := os.ReadFile(configFile)
+	data, err := os.ReadFile(c.configPath)
 	if err == nil {
-		c.logger.DebugContext(ctx, "Loaded config", slog.String("path", configFile))
-		return json.Unmarshal(data, c)
+		c.logger.DebugContext(ctx, "Loaded config", slog.String("path", c.configPath))
+		return json.Unmarshal(data, &c.data)
 	}
 
 	if !os.IsNotExist(err) {
@@ -79,7 +86,7 @@ func (c *Config) Load(ctx context.Context) error {
 	}
 
 	// config.json doesn't exist, try to migrate from legacy profile.json
-	legacyData, err := os.ReadFile(legacyFile)
+	legacyData, err := os.ReadFile(c.legacyConfigPath)
 	if os.IsNotExist(err) {
 		// Neither file exists, nothing to load
 		c.logger.DebugContext(ctx, "No config file found, starting fresh")
@@ -90,11 +97,11 @@ func (c *Config) Load(ctx context.Context) error {
 	}
 
 	c.logger.InfoContext(ctx, "Migrating legacy config",
-		slog.String("from", legacyFile),
-		slog.String("to", configFile))
+		slog.String("from", c.legacyConfigPath),
+		slog.String("to", c.configPath))
 
 	// Parse legacy format
-	var legacy legacyRC
+	var legacy legacyConfigData
 	if err := json.Unmarshal(legacyData, &legacy); err != nil {
 		return fmt.Errorf("parse legacy config file: %w", err)
 	}
@@ -108,7 +115,7 @@ func (c *Config) Load(ctx context.Context) error {
 	}
 
 	// Remove old file
-	if err := os.Remove(legacyFile); err != nil {
+	if err := os.Remove(c.legacyConfigPath); err != nil {
 		return fmt.Errorf("remove legacy config file: %w", err)
 	}
 
@@ -117,36 +124,34 @@ func (c *Config) Load(ctx context.Context) error {
 	return nil
 }
 
-// Save saves Config data to the file located at configFilepath.
+// Save saves Config data to the config file.
 func (c *Config) Save(ctx context.Context) error {
-	configFile := os.ExpandEnv(configFilepath)
-
-	if err := osfs.MkdirAll(filepath.Dir(configFile), 0700); err != nil {
+	if err := osfs.MkdirAll(filepath.Dir(c.configPath), 0700); err != nil {
 		return err
 	}
 
-	data, err := json.MarshalIndent(c, "", "    ")
+	data, err := json.MarshalIndent(c.data, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(configFile, data, 0600); err != nil {
+	if err := os.WriteFile(c.configPath, data, 0600); err != nil {
 		return err
 	}
 
-	c.logger.DebugContext(ctx, "Saved config", slog.String("path", configFile))
+	c.logger.DebugContext(ctx, "Saved config", slog.String("path", c.configPath))
 
 	return nil
 }
 
 // migrateFromLegacy converts legacy RC format to new Config format.
-func (c *Config) migrateFromLegacy(legacy *legacyRC) {
-	paths := legacy.Config.Paths
-	if len(paths) == 0 && legacy.Config.Path != "" {
-		paths = []string{legacy.Config.Path}
+func (c *Config) migrateFromLegacy(data *legacyConfigData) {
+	paths := data.Config.Paths
+	if len(paths) == 0 && data.Config.Path != "" {
+		paths = []string{data.Config.Path}
 	}
 
 	for _, p := range paths {
-		c.Profiles = append(c.Profiles, ConfigProfile{Path: p})
+		c.data.Profiles = append(c.data.Profiles, ConfigProfile{Path: p})
 	}
 }
