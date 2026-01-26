@@ -1,0 +1,7 @@
+{
+  "directories": {
+    "dotfiles": "$TEST_DOTFILES_DIR",
+    "destination": "$TEST_DESTINATION_DIR",
+    "backup": "$TEST_BACKUP_DIR"
+  }
+}

@@ -67,17 +67,17 @@ func (app *App) Run(args map[string]any) {
 		}
 
 		// Preparations
-		err = os.MkdirAll(app.profile.Directories.Backup, 0700)
+		err = os.MkdirAll(app.profile.BackupDir(), 0700)
 		if err != nil && !os.IsExist(err) {
 			app.logger.ErrorContext(ctx, "Error creating backup directory", slog.Any("error", err))
 			app.exit(1)
 		}
 
 		app.logger.DebugContext(ctx, "Profile directories",
-			slog.String("dotfiles", app.profile.Directories.Dotfiles),
-			slog.String("sources", app.profile.Directories.Sources),
-			slog.String("destination", app.profile.Directories.Destination),
-			slog.String("backup", app.profile.Directories.Backup))
+			slog.String("dotfiles", app.profile.DotfilesDir()),
+			slog.String("sources", app.profile.SourcesDir()),
+			slog.String("destination", app.profile.DestinationDir()),
+			slog.String("backup", app.profile.BackupDir()))
 
 		// Select action
 		switch {
@@ -134,10 +134,10 @@ func (app *App) addAction(ctx context.Context, filename string) error {
 
 	app.logger.DebugContext(ctx, "Adding file to dotfiles root",
 		slog.String("src", filename),
-		slog.String("dst", app.profile.Directories.Dotfiles))
+		slog.String("dst", app.profile.DotfilesDir()))
 
 	// backup file
-	backupPath := app.profile.Directories.Backup + "/" + path.Base(filename)
+	backupPath := app.profile.BackupDir() + "/" + path.Base(filename)
 	if err = Copy(osfs, filename, backupPath); err != nil {
 		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
 	}
@@ -147,7 +147,7 @@ func (app *App) addAction(ctx context.Context, filename string) error {
 		slog.String("dst", backupPath))
 
 	// Move file to dotfiles root
-	newPath := app.profile.Directories.Dotfiles + "/" + path.Base(filename)
+	newPath := app.profile.DotfilesDir() + "/" + path.Base(filename)
 	if err = os.Rename(filename, newPath); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (app *App) addAction(ctx context.Context, filename string) error {
 
 func (app *App) cleanAction(ctx context.Context) error {
 	cleaner := NewCleaner(osfs, app.logger)
-	if err := cleaner.CleanDeadSymlinks(ctx, app.profile.Directories.Destination); err != nil {
+	if err := cleaner.CleanDeadSymlinks(ctx, app.profile.DestinationDir()); err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
@@ -176,33 +176,33 @@ func (app *App) cleanAction(ctx context.Context) error {
 func (app *App) installAction(ctx context.Context) error {
 	// Default action: install
 	cleaner := NewCleaner(osfs, app.logger)
-	err := cleaner.CleanDeadSymlinks(ctx, app.profile.Directories.Destination)
+	err := cleaner.CleanDeadSymlinks(ctx, app.profile.DestinationDir())
 	if err != nil {
 		return fmt.Errorf("Error cleaning dead symlinks: %s", err)
 	}
 
-	srcDirAbs := app.profile.Directories.Dotfiles
-	if app.profile.Directories.Sources != "" {
-		if _, err = os.Stat(app.profile.Directories.Sources); os.IsNotExist(err) {
-			return fmt.Errorf("Sources directory `%s' does not exist.", app.profile.Directories.Sources)
+	srcDirAbs := app.profile.DotfilesDir()
+	if app.profile.SourcesDir() != "" {
+		if _, err = os.Stat(app.profile.SourcesDir()); os.IsNotExist(err) {
+			return fmt.Errorf("Sources directory `%s' does not exist.", app.profile.SourcesDir())
 		}
 		if err != nil {
-			return fmt.Errorf("Error reading sources directory `%s': %s", app.profile.Directories.Sources, err)
+			return fmt.Errorf("Error reading sources directory `%s': %s", app.profile.SourcesDir(), err)
 		}
-		srcDirAbs += "/" + app.profile.Directories.Sources
+		srcDirAbs += "/" + app.profile.SourcesDir()
 	}
 
 	mapping := app.getMapping(ctx, srcDirAbs)
 	linker := NewLinker(osfs, app.logger)
 
-	app.logger.InfoContext(ctx, "--> Installing dotfiles...", slog.String("profile", app.profile.Filepath))
+	app.logger.InfoContext(ctx, "--> Installing dotfiles...", slog.String("profile", app.profile.Filepath()))
 
 	// filter mapping:
 	// - non-existent files
 	// - already installed files
 	filterMapping(mapping, func(src, dst string) bool {
 		srcAbs := path.Join(srcDirAbs, src)
-		destAbs := path.Join(app.profile.Directories.Destination, dst)
+		destAbs := path.Join(app.profile.DestinationDir(), dst)
 		if _, err := osfs.Stat(srcAbs); err != nil {
 			if osfs.IsNotExist(err) {
 				app.logger.WarnContext(ctx, "Source file does not exist", slog.String("path", srcAbs))
@@ -226,7 +226,7 @@ func (app *App) installAction(ctx context.Context) error {
 
 	app.logger.InfoContext(ctx, "Installing dotfiles",
 		slog.String("src", srcDirAbs),
-		slog.String("dst", app.profile.Directories.Destination))
+		slog.String("dst", app.profile.DestinationDir()))
 	for src, dst := range mapping {
 		app.installDotfile(ctx, src, dst, linker, srcDirAbs)
 	}
@@ -286,7 +286,7 @@ func (app *App) getProfilePaths(ctx context.Context, profileArg any) []string {
 func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]string {
 	mapping := make(map[string]string)
 
-	if len(app.profile.Mapping) == 0 {
+	if len(app.profile.Data().Mapping) == 0 {
 		// install all the things
 		app.logger.DebugContext(ctx, "Mapping is not specified - install all the things")
 		dir, err := os.Open(srcDirAbs)
@@ -312,16 +312,16 @@ func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]str
 		}
 
 		// filter excludes
-		for _, exclude := range app.profile.Files.Excludes {
+		for _, exclude := range app.profile.Data().Files.Excludes {
 			delete(mapping, exclude)
 		}
 	} else {
 		// install by mapping
-		if len(app.profile.Files.Excludes) > 0 {
+		if len(app.profile.Data().Files.Excludes) > 0 {
 			app.logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
 		}
 
-		mapping = app.profile.Mapping
+		mapping = app.profile.Data().Mapping
 	}
 
 	return mapping
@@ -329,7 +329,7 @@ func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]str
 
 func (app *App) installDotfile(ctx context.Context, src, dest string, linker Linker, srcDirAbs string) {
 	srcAbs := path.Join(srcDirAbs, src)
-	destAbs := path.Join(app.profile.Directories.Destination, dest)
+	destAbs := path.Join(app.profile.DestinationDir(), dest)
 
 	needBackup, err := linker.NeedBackup(destAbs)
 	if err != nil {
@@ -339,7 +339,7 @@ func (app *App) installDotfile(ctx context.Context, src, dest string, linker Lin
 
 	if needBackup {
 		oldpath := destAbs
-		newpath := app.profile.Directories.Backup + "/" + dest
+		newpath := app.profile.BackupDir() + "/" + dest
 		err = linker.Move(ctx, oldpath, newpath)
 		if err != nil {
 			app.logger.ErrorContext(ctx, "Error on file backup", slog.String("path", oldpath), slog.Any("error", err))

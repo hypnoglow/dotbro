@@ -6,26 +6,45 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
-// Profile represents data from a profile file and additional parameters.
+// Profile represents a loaded profile with its file path and data.
 type Profile struct {
-	Directories Directories
-	Mapping     map[string]string
-	Files       Files
-	Filepath    string
+	// filepath is the path to the profile file itself.
+	filepath string
+
+	// data contains the parsed profile data.
+	data ProfileData
+}
+
+// ProfileData represents the data structure of a profile file.
+type ProfileData struct {
+	// Directories contains paths configuration for dotfiles management.
+	Directories Directories `toml:"directories" json:"directories"`
+
+	// Mapping defines source-to-destination file mappings.
+	Mapping map[string]string `toml:"mapping" json:"mapping"`
+
+	// Files contains file filtering options.
+	Files Files `toml:"files" json:"files"`
 }
 
 // Directories represents [directories] section of a profile.
 type Directories struct {
-	Dotfiles    string `toml:"dotfiles" json:"dotfiles"`
-	Sources     string `toml:"sources" json:"sources"`
+	// Dotfiles is the root directory containing dotfiles to manage.
+	Dotfiles string `toml:"dotfiles" json:"dotfiles"`
+
+	// Sources is a subdirectory within Dotfiles containing actual dotfiles.
+	// Deprecated: use Dotfiles directly.
+	Sources string `toml:"sources" json:"sources"`
+
+	// Destination is the target directory where symlinks will be created.
 	Destination string `toml:"destination" json:"destination"`
-	Backup      string `toml:"backup" json:"backup"`
+
+	// Backup is the directory for storing original files before symlinking.
+	Backup string `toml:"backup" json:"backup"`
 }
 
 // Files represents [files] section of a profile.
@@ -34,12 +53,15 @@ type Files struct {
 }
 
 // NewProfile returns a new Profile.
-func NewProfile(filename string) (p *Profile, err error) {
+func NewProfile(filename string) (*Profile, error) {
+	var data ProfileData
+	var err error
+
 	switch filepath.Ext(filename) {
 	case ".toml":
-		p, err = profileFromTOML(filename)
+		data, err = profileDataFromTOML(filename)
 	case ".json":
-		p, err = profileFromJSON(filename)
+		data, err = profileDataFromJSON(filename)
 	default:
 		err = fmt.Errorf("unknown profile file extension %s: supported extensions are .toml and .json", filename)
 	}
@@ -48,103 +70,148 @@ func NewProfile(filename string) (p *Profile, err error) {
 		return nil, err
 	}
 
-	p, err = processProfile(p)
+	data, err = processProfileData(data, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	p.Filepath = filename
-	return p, nil
+	return &Profile{
+		filepath: filename,
+		data:     data,
+	}, nil
 }
 
-func profileFromTOML(filename string) (p *Profile, err error) {
-	if _, err = toml.DecodeFile(filename, &p); err != nil {
-		return nil, err
+// Filepath returns the path to the profile file.
+func (p Profile) Filepath() string {
+	return p.filepath
+}
+
+// Data returns the profile data.
+func (p Profile) Data() ProfileData {
+	return p.data
+}
+
+// DotfilesDir returns the dotfiles directory path.
+func (p Profile) DotfilesDir() string {
+	return p.data.Directories.Dotfiles
+}
+
+// SourcesDir returns the sources subdirectory path.
+// Deprecated: use DotfilesDir directly.
+func (p Profile) SourcesDir() string {
+	return p.data.Directories.Sources
+}
+
+// DestinationDir returns the destination directory path.
+func (p Profile) DestinationDir() string {
+	return p.data.Directories.Destination
+}
+
+// BackupDir returns the backup directory path.
+func (p Profile) BackupDir() string {
+	return p.data.Directories.Backup
+}
+
+func profileDataFromTOML(filename string) (ProfileData, error) {
+	var data ProfileData
+	if _, err := toml.DecodeFile(filename, &data); err != nil {
+		return ProfileData{}, err
 	}
-
-	return p, nil
+	return data, nil
 }
 
-func profileFromJSON(filename string) (p *Profile, err error) {
+func profileDataFromJSON(filename string) (ProfileData, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return ProfileData{}, err
 	}
 
-	if err = json.Unmarshal(file, &p); err != nil {
-		return nil, err
+	var data ProfileData
+	if err = json.Unmarshal(file, &data); err != nil {
+		return ProfileData{}, err
 	}
-
-	return p, nil
+	return data, nil
 }
 
-func processProfile(p *Profile) (*Profile, error) {
-	params := getDirectoriesParams(p.Filepath)
+func processProfileData(data ProfileData, profilePath string) (ProfileData, error) {
+	home := os.Getenv("HOME")
+	profileDir := path.Dir(profilePath)
 
-	t := reflect.TypeOf(p.Directories)
-	r := reflect.ValueOf(&p.Directories).Elem()
-
-	for i := 0; i < r.NumField(); i++ {
-		name := t.Field(i).Name
-		field := r.FieldByName(name)
-
-		value := os.ExpandEnv(field.String())
-		if value == "" {
-			value = params[name].defaultValue
-		}
-
-		err := checkIfDirCorrect(name, value, params[name].isRelative)
-		if err != nil {
-			return nil, err
-		}
-
-		field.SetString(value)
-	}
-
-	return p, nil
-}
-
-type directoryParam struct {
-	defaultValue string
-	isRelative   bool
-}
-
-func getDirectoriesParams(profilePath string) map[string]directoryParam {
-	params := map[string]directoryParam{
-		"Dotfiles": {
-			defaultValue: path.Dir(profilePath),
-			isRelative:   false,
+	dirs := [4]directory{
+		{
+			name:         "dotfiles",
+			value:        data.Directories.Dotfiles,
+			defaultValue: profileDir,
+			relative:     false,
 		},
-		"Sources": {
+		{
+			name:         "sources",
+			value:        data.Directories.Sources,
 			defaultValue: "",
-			isRelative:   true,
+			relative:     true,
 		},
-		"Destination": {
-			defaultValue: os.Getenv("HOME"),
-			isRelative:   false,
+		{
+			name:         "destination",
+			value:        data.Directories.Destination,
+			defaultValue: home,
+			relative:     false,
 		},
-		"Backup": {
-			defaultValue: os.Getenv("HOME") + "/.dotfiles~",
-			isRelative:   false,
+		{
+			name:         "backup",
+			value:        data.Directories.Backup,
+			defaultValue: home + "/.dotfiles~",
+			relative:     false,
 		},
 	}
-	return params
+
+	for i := range dirs {
+		dirs[i].value = os.ExpandEnv(dirs[i].value)
+		if dirs[i].value == "" {
+			dirs[i].value = dirs[i].defaultValue
+		}
+
+		if dirs[i].relative {
+			if err := checkDirectoryRelative(dirs[i].name, dirs[i].value); err != nil {
+				return ProfileData{}, err
+			}
+		} else {
+			if err := checkDirectoryAbsolute(dirs[i].name, dirs[i].value); err != nil {
+				return ProfileData{}, err
+			}
+		}
+	}
+
+	data.Directories.Dotfiles = dirs[0].value
+	data.Directories.Sources = dirs[1].value
+	data.Directories.Destination = dirs[2].value
+	data.Directories.Backup = dirs[3].value
+
+	return data, nil
 }
 
-func checkIfDirCorrect(fieldName, dir string, isRelative bool) error {
-	if !isRelative && !path.IsAbs(dir) {
+type directory struct {
+	name         string
+	value        string
+	defaultValue string
+	relative     bool
+}
+
+func checkDirectoryAbsolute(name, dir string) error {
+	if !path.IsAbs(dir) {
 		return fmt.Errorf(
 			"'directories.%s' must be an absolute path",
-			strings.ToLower(fieldName),
+			name,
 		)
 	}
+	return nil
+}
 
-	if isRelative && path.IsAbs(dir) {
+func checkDirectoryRelative(name, dir string) error {
+	if path.IsAbs(dir) {
 		return fmt.Errorf(
-			"'directories.%s' must be a relative path (to 'directories.dotfiles_root').\n",
-			strings.ToLower(fieldName),
+			"'directories.%s' must be a relative path",
+			name,
 		)
 	}
-
 	return nil
 }

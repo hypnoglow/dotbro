@@ -70,6 +70,9 @@ TOML is peferred, because it's a bit clearer and allows comments.
 However, JSON is good option for configs without mapping, it's short and simple.
 
 Example of a simple configuration file in TOML format:
+
+https://github.com/hypnoglow/dotbro/blob/main/profile.toml
+
 ```toml
 # Dotbro configuration file.
 #

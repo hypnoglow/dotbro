@@ -1,0 +1,75 @@
+# Dotbro profile.
+# Reference: https://github.com/hypnoglow/dotbro
+#
+# Note:
+# - Almost all options have default value.
+# - You can use $ENV_VARIABLE in paths.
+
+# [directories]
+#
+# Directories section defines source, destination and backup directories.
+[directories]
+
+# dotfiles
+#
+# Directory of your dotfiles repository.
+# This is the source directory for dotfiles.
+#
+# Default: directory of this config.
+#
+# Example:
+# dotfiles = "$HOME/dotfiles"
+
+dotfiles = ""
+
+# destination
+#
+# Directory where dotfiles will be installed.
+# This is the destination directory for dotfiles.
+#
+# Default: $HOME
+#
+# Example:
+# destination = "$HOME/.config"
+
+destination = "$HOME"
+
+# backup
+#
+# Directory where original files will be backed up before new files are installed.
+#
+# Default: $HOME/.dotfiles~
+#
+# Example:
+# backup = "$HOME/.dotfiles-backup"
+
+backup = "$HOME/.dotfiles~"
+
+# [mapping]
+#
+# Mapping section defines source and destination files to install.
+#
+# This section is basically a list of key-value pairs.
+#
+# Source path is relative to [directories.dotfiles].
+# Destination path is relative to [directories.destination].
+#
+# Directories are also supported.
+# Types must match: either both are directories or both are files.
+#
+# Example:
+#
+# # Binaries
+# "bin" = "bin"
+#
+# # Git
+# "git/config" = ".gitconfig"
+#
+# # ZSH
+# "zsh/zprofile" = ".zprofile"
+# "zsh/zshrc" = ".zshrc"
+# "zsh/zlogin" = ".zlogin"
+#
+# # Zed
+# "zed" = ".config/zed"
+[mapping]

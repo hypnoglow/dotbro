@@ -1,0 +1,6 @@
+{
+  "directories": {
+    "dotfiles": "/tmp",
+    "sources": "/absolute/path"
+  }
+}

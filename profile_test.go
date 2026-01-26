@@ -1,204 +1,116 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/BurntSushi/toml"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const (
-	testJSONProfilePath = "/tmp/dotbro.json"
-	testTOMLProfilePath = "/tmp/dotbro.toml"
-)
+func TestNewProfile_FromJSON(t *testing.T) {
+	t.Parallel()
 
-func TestNewProfile(t *testing.T) {
-	testNewProfile_FromJSON(t)
-	testNewProfile_FromTOML(t)
+	p, err := NewProfile("testdata/profile_valid.json")
 
-	testNewProfile_BadJSON(t)
-	testNewProfile_BadTOML(t)
-
-	testNewProfile_FromUnknown(t)
-
-	testNewProfile_BadDotfilesDirectory(t)
-	testNewProfile_BadSourcesDirectory(t)
+	require.NoError(t, err)
+	assert.Equal(t, "/dotfiles/root", p.DotfilesDir())
 }
 
-func testNewProfile_FromJSON(t *testing.T) {
-	// set up
+func TestNewProfile_FromTOML(t *testing.T) {
+	t.Parallel()
 
-	file, err := os.Create(testJSONProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	p, err := NewProfile("testdata/profile_valid.toml")
 
-	defer os.Remove(testJSONProfilePath)
-
-	dirs := &Directories{
-		Dotfiles: "/tmp",
-	}
-	p := &Profile{
-		Directories: *dirs,
-	}
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err = encoder.Encode(p); err != nil {
-		t.Fatal(err)
-	}
-
-	// test
-
-	_, err = NewProfile(testJSONProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "/dotfiles/root", p.DotfilesDir())
 }
 
-func testNewProfile_FromTOML(t *testing.T) {
-	// set up
+func TestNewProfile_InvalidJSON(t *testing.T) {
+	t.Parallel()
 
-	file, err := os.Create(testTOMLProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/profile_invalid.json")
 
-	defer os.Remove(testTOMLProfilePath)
-
-	dirs := &Directories{
-		Dotfiles: "/tmp",
-	}
-	p := &Profile{
-		Directories: *dirs,
-	}
-
-	encoder := toml.NewEncoder(file)
-	if err = encoder.Encode(p); err != nil {
-		t.Fatal(err)
-	}
-
-	// test
-
-	_, err = NewProfile(testTOMLProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Error(t, err)
 }
 
-func testNewProfile_FromUnknown(t *testing.T) {
-	// set up
+func TestNewProfile_InvalidTOML(t *testing.T) {
+	t.Parallel()
 
-	// test
+	_, err := NewProfile("testdata/profile_invalid.toml")
 
-	_, err := NewProfile("/tmp/somefile.badext")
-	if err == nil {
-		t.Fatal("Should fail because of unknown file extension")
-	}
-
-	// tear down
+	assert.Error(t, err)
 }
 
-func testNewProfile_BadJSON(t *testing.T) {
-	// set up
+func TestNewProfile_UnknownExtension(t *testing.T) {
+	t.Parallel()
 
-	f, err := os.Create(testJSONProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/somefile.badext")
 
-	defer os.Remove(testJSONProfilePath)
-
-	_, _ = f.WriteString("{bad json:")
-
-	// test
-
-	_, err = NewProfile(testJSONProfilePath)
-	if err == nil {
-		t.Fatal("Should error because of invalid json")
-	}
+	assert.Error(t, err)
 }
 
-func testNewProfile_BadTOML(t *testing.T) {
-	// set up
+func TestNewProfile_BadDotfilesDirectory(t *testing.T) {
+	t.Parallel()
 
-	f, err := os.Create(testTOMLProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/profile_bad_dotfiles.json")
 
-	defer os.Remove(testTOMLProfilePath)
-
-	_, _ = f.WriteString("bad toml")
-
-	// test
-
-	_, err = NewProfile(testTOMLProfilePath)
-	if err == nil {
-		t.Fatal("Should error because of invalid toml")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "must be an absolute path")
 }
 
-func testNewProfile_BadDotfilesDirectory(t *testing.T) {
-	// set up
+func TestNewProfile_BadSourcesDirectory(t *testing.T) {
+	t.Parallel()
 
-	file, err := os.Create(testJSONProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/profile_bad_sources.json")
 
-	defer os.Remove(testJSONProfilePath)
-
-	dirs := &Directories{
-		Dotfiles: "tmp", // this path must be absolute
-	}
-	p := &Profile{
-		Directories: *dirs,
-	}
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err = encoder.Encode(p); err != nil {
-		t.Fatal(err)
-	}
-
-	// test
-
-	_, err = NewProfile(testJSONProfilePath)
-	if err == nil {
-		t.Fatal("Should fail because of directories.dotfiles must be an absolute path")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "must be a relative path")
 }
 
-func testNewProfile_BadSourcesDirectory(t *testing.T) {
-	// set up
+func TestNewProfile_BadDestinationDirectory(t *testing.T) {
+	t.Parallel()
 
-	file, err := os.Create(testJSONProfilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/profile_bad_destination.json")
 
-	defer os.Remove(testJSONProfilePath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "must be an absolute path")
+}
 
-	dirs := &Directories{
-		Dotfiles: "/tmp",
-		Sources:  "/dotfiles", // this path must be relative
-	}
-	p := &Profile{
-		Directories: *dirs,
-	}
+func TestNewProfile_BadBackupDirectory(t *testing.T) {
+	t.Parallel()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err = encoder.Encode(p); err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewProfile("testdata/profile_bad_backup.json")
 
-	// test
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "must be an absolute path")
+}
 
-	_, err = NewProfile(testJSONProfilePath)
-	if err == nil {
-		t.Fatal("Should fail because of directories.sources must be a relative path")
-	}
+func TestNewProfile_ExpandEnv(t *testing.T) {
+	t.Setenv("TEST_DOTFILES_DIR", "/my/dotfiles")
+	t.Setenv("TEST_DESTINATION_DIR", "/my/destination")
+	t.Setenv("TEST_BACKUP_DIR", "/my/backup")
+
+	p, err := NewProfile("testdata/profile_env_vars.json")
+
+	require.NoError(t, err)
+	assert.Equal(t, "/my/dotfiles", p.DotfilesDir())
+	assert.Equal(t, "/my/destination", p.DestinationDir())
+	assert.Equal(t, "/my/backup", p.BackupDir())
+}
+
+func TestNewProfile_DefaultValues(t *testing.T) {
+	home := os.Getenv("HOME")
+	profilePath, err := filepath.Abs("testdata/profile_defaults.json")
+	require.NoError(t, err)
+	profileDir := filepath.Dir(profilePath)
+
+	p, err := NewProfile(profilePath)
+
+	require.NoError(t, err)
+	assert.Equal(t, profileDir, p.DotfilesDir())
+	assert.Equal(t, "", p.SourcesDir())
+	assert.Equal(t, home, p.DestinationDir())
+	assert.Equal(t, home+"/.dotfiles~", p.BackupDir())
 }
