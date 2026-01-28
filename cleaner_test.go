@@ -3,8 +3,9 @@ package main
 import (
 	"errors"
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: the test is broken (cause of home).
@@ -163,8 +164,6 @@ func TestCleaner_CleanDeadSymlinks(t *testing.T) {
 
 		err := cleaner.CleanDeadSymlinks(t.Context(), c.dirpath)
 
-		if !reflect.DeepEqual(err, c.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
-		}
+		assert.Equal(t, c.expectedError, err)
 	}
 }

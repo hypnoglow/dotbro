@@ -3,8 +3,9 @@ package main
 import (
 	"errors"
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLinker_Move(t *testing.T) {
@@ -58,9 +59,7 @@ func TestLinker_Move(t *testing.T) {
 		linker := NewLinker(c.os, newDiscardLogger())
 		err := linker.Move(t.Context(), c.oldpath, c.newpath)
 
-		if !reflect.DeepEqual(err, c.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
-		}
+		assert.Equal(t, c.expectedError, err)
 	}
 }
 
@@ -104,9 +103,7 @@ func TestLinker_SetSymlink(t *testing.T) {
 		linker := NewLinker(c.os, newDiscardLogger())
 
 		err := linker.SetSymlink(c.srcAbs, c.destAbs)
-		if !reflect.DeepEqual(err, c.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
-		}
+		assert.Equal(t, c.expectedError, err)
 	}
 }
 
@@ -208,13 +205,8 @@ func TestLinker_NeedSymlink(t *testing.T) {
 
 		result, err := linker.NeedSymlink(t.Context(), c.src, c.dest)
 
-		if result != c.expectedResult {
-			t.Errorf("Expected %v but got %v\n", c.expectedResult, result)
-		}
-
-		if !reflect.DeepEqual(err, c.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
-		}
+		assert.Equal(t, c.expectedResult, result)
+		assert.Equal(t, c.expectedError, err)
 	}
 }
 
@@ -273,12 +265,7 @@ func TestLinker_NeedBackup(t *testing.T) {
 
 		result, err := linker.NeedBackup(c.dest)
 
-		if result != c.expectedResult {
-			t.Errorf("Expected %v but got %v\n", c.expectedResult, result)
-		}
-
-		if !reflect.DeepEqual(err, c.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", c.expectedError, err)
-		}
+		assert.Equal(t, c.expectedResult, result)
+		assert.Equal(t, c.expectedError, err)
 	}
 }

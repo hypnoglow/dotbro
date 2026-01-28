@@ -3,24 +3,20 @@ package main
 import (
 	"errors"
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCopy(t *testing.T) {
 	// dirty hacks
 	testLonelyFile, err := os.Create("/tmp/test_in_file")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	testInFile, err := os.Create("/tmp/test_in_file")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	testOutFile, err := os.Create("/tmp/test_out_file")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cases := []struct {
 		os            *FakeOS
@@ -165,8 +161,6 @@ func TestCopy(t *testing.T) {
 	for _, testcase := range cases {
 		err := Copy(testcase.os, testcase.src, testcase.dest)
 
-		if !reflect.DeepEqual(err, testcase.expectedError) {
-			t.Errorf("Expected err to be %v but it was %v\n", testcase.expectedError, err)
-		}
+		assert.Equal(t, testcase.expectedError, err)
 	}
 }

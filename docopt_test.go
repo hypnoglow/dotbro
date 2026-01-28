@@ -1,10 +1,12 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestParseArguments(t *testing.T) {
 	_, err := ParseArguments([]string{"--quiet"})
-	if err != nil {
-		t.Fatalf("Error parsing arguments: %v", err.Error())
-	}
+	require.NoError(t, err)
 }
