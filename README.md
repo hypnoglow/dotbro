@@ -11,11 +11,11 @@
 
 2. Run dotbro first time:
     
-    dotbro --config path/to/your/dotbro.toml
+        dotbro --config path/to/your/dotbro.toml
     
 3. Next time just execute:
 
-    dotbro
+        dotbro
 
 ## Dotfiles? What?
 
@@ -115,7 +115,7 @@ Profile has 3 sections:
 Option | Description | Example | Default
 --- | --- | --- | ---
 dotfiles | Directory of your dotfiles repository. | `$HOME/dotfiles` | Directory of your profile file.
-sources | Directory relative to `dotfiles` where dotfiles are stored. You want to set this option if you keep your dotfiles in a subdirectory of your repo. By default this is empty, assuming your dotfiles are on the first level of `dotfiles` directory. | `src` | none
+sources | **DEPRECATED** Directory relative to `dotfiles` where dotfiles are stored. You want to set this option if you keep your dotfiles in a subdirectory of your repo. By default this is empty, assuming your dotfiles are on the first level of `dotfiles` directory. | `src` | none
 destination | Your dotfiles will be linked there. | `$HOME` | `$HOME`
 backup | Your original files will be backuped there. | `$HOME/backups/dotfiles` | `$HOME/.dotfiles~`
 
