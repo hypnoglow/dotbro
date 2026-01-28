@@ -71,7 +71,7 @@ However, JSON is good option for configs without mapping, it's short and simple.
 
 Example of a simple configuration file in TOML format:
 
-https://github.com/hypnoglow/dotbro/blob/main/profile.toml
+https://github.com/hypnoglow/dotbro/blob/da5995c05e9ff228f46f8a9eff18b6c8c9e502b9/profile.toml
 
 ```toml
 # Dotbro configuration file.
