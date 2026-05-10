@@ -25,10 +25,54 @@ type ProfileData struct {
 	Directories Directories `toml:"directories" json:"directories"`
 
 	// Mapping defines source-to-destination file mappings.
-	Mapping map[string]string `toml:"mapping" json:"mapping"`
+	// A single source may be linked to one or more destinations.
+	Mapping map[string]Destinations `toml:"mapping" json:"mapping"`
 
 	// Files contains file filtering options.
 	Files Files `toml:"files" json:"files"`
+}
+
+// Destinations is a list of destination paths for a single source file in
+// [ProfileData.Mapping]. Both a plain string and an array of strings are
+// accepted in TOML and JSON.
+type Destinations []string
+
+// UnmarshalTOML implements TOML decoding for Destinations.
+func (d *Destinations) UnmarshalTOML(v any) error {
+	switch val := v.(type) {
+	case string:
+		*d = Destinations{val}
+		return nil
+	case []any:
+		dst := make(Destinations, 0, len(val))
+		for _, item := range val {
+			s, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("mapping destination: expected string, got %T", item)
+			}
+			dst = append(dst, s)
+		}
+		*d = dst
+		return nil
+	default:
+		return fmt.Errorf("mapping destination: expected string or array of strings, got %T", v)
+	}
+}
+
+// UnmarshalJSON implements JSON decoding for Destinations.
+func (d *Destinations) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*d = Destinations{s}
+		return nil
+	}
+
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return fmt.Errorf("mapping destination: expected string or array of strings: %w", err)
+	}
+	*d = arr
+	return nil
 }
 
 // Directories represents [directories] section of a profile.

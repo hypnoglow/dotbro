@@ -1,0 +1,9 @@
+{
+  "directories": {
+    "dotfiles": "/dotfiles/root"
+  },
+  "mapping": {
+    "src/single": "dst/single",
+    "src/multi": ["dst/one", "dst/two"]
+  }
+}

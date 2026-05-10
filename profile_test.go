@@ -100,6 +100,26 @@ func TestNewProfile_ExpandEnv(t *testing.T) {
 	assert.Equal(t, "/my/backup", p.BackupDir())
 }
 
+func TestNewProfile_Mapping_TOML(t *testing.T) {
+	t.Parallel()
+
+	p, err := NewProfile("testdata/profile_mapping.toml")
+
+	require.NoError(t, err)
+	assert.Equal(t, Destinations{"dst/single"}, p.Data().Mapping["src/single"])
+	assert.Equal(t, Destinations{"dst/one", "dst/two"}, p.Data().Mapping["src/multi"])
+}
+
+func TestNewProfile_Mapping_JSON(t *testing.T) {
+	t.Parallel()
+
+	p, err := NewProfile("testdata/profile_mapping.json")
+
+	require.NoError(t, err)
+	assert.Equal(t, Destinations{"dst/single"}, p.Data().Mapping["src/single"])
+	assert.Equal(t, Destinations{"dst/one", "dst/two"}, p.Data().Mapping["src/multi"])
+}
+
 func TestNewProfile_DefaultValues(t *testing.T) {
 	home := os.Getenv("HOME")
 	profilePath, err := filepath.Abs("testdata/profile_defaults.json")

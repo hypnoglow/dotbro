@@ -227,8 +227,10 @@ func (app *App) installAction(ctx context.Context) error {
 	app.logger.InfoContext(ctx, "Installing dotfiles",
 		slog.String("src", srcDirAbs),
 		slog.String("dst", app.profile.DestinationDir()))
-	for src, dst := range mapping {
-		app.installDotfile(ctx, src, dst, linker, srcDirAbs)
+	for src, dsts := range mapping {
+		for _, dst := range dsts {
+			app.installDotfile(ctx, src, dst, linker, srcDirAbs)
+		}
 	}
 
 	return nil
@@ -283,9 +285,7 @@ func (app *App) getProfilePaths(ctx context.Context, profileArg any) []string {
 	return []string{profilePath}
 }
 
-func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]string {
-	mapping := make(map[string]string)
-
+func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]Destinations {
 	if len(app.profile.Data().Mapping) == 0 {
 		// install all the things
 		app.logger.DebugContext(ctx, "Mapping is not specified - install all the things")
@@ -307,24 +307,25 @@ func (app *App) getMapping(ctx context.Context, srcDirAbs string) map[string]str
 			app.exit(1)
 		}
 
+		mapping := make(map[string]Destinations, len(files))
 		for _, fileInfo := range files {
-			mapping[fileInfo.Name()] = fileInfo.Name()
+			mapping[fileInfo.Name()] = Destinations{fileInfo.Name()}
 		}
 
 		// filter excludes
 		for _, exclude := range app.profile.Data().Files.Excludes {
 			delete(mapping, exclude)
 		}
-	} else {
-		// install by mapping
-		if len(app.profile.Data().Files.Excludes) > 0 {
-			app.logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
-		}
 
-		mapping = app.profile.Data().Mapping
+		return mapping
 	}
 
-	return mapping
+	// install by mapping
+	if len(app.profile.Data().Files.Excludes) > 0 {
+		app.logger.WarnContext(ctx, "Excludes in config make no sense when mapping is specified, omitting them.")
+	}
+
+	return app.profile.Data().Mapping
 }
 
 func (app *App) installDotfile(ctx context.Context, src, dest string, linker Linker, srcDirAbs string) {
@@ -365,10 +366,18 @@ func (app *App) exit(exitCode int) {
 	os.Exit(exitCode)
 }
 
-func filterMapping(mapping map[string]string, callback func(src, dst string) bool) {
-	for src, dst := range mapping {
-		if !callback(src, dst) {
+func filterMapping(mapping map[string]Destinations, callback func(src, dst string) bool) {
+	for src, dsts := range mapping {
+		kept := dsts[:0]
+		for _, dst := range dsts {
+			if callback(src, dst) {
+				kept = append(kept, dst)
+			}
+		}
+		if len(kept) == 0 {
 			delete(mapping, src)
+		} else {
+			mapping[src] = kept
 		}
 	}
 }

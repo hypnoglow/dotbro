@@ -128,6 +128,11 @@ In `directories` section you have already specified `dotfiles = "$HOME/dotfiles"
 "vim/vimrc" = ".vimrc"
 ```
 
+A single source file can also be linked to multiple destinations by providing an array:
+```
+"editorconfig" = [".editorconfig", "projects/.editorconfig"]
+```
+
 Also, mapping is optional. If you do not specify any mapping, `dotbro` will symlink all files from your dotfiles directory to your destination directory respectively. If you do want this approach, but want some files to be excluded, see [Files](#files) section.
 
 #### Files

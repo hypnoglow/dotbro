@@ -20,6 +20,9 @@ backup = "$HOME/.dotfiles~"
 
 [mapping]
 
+# A source can be linked to a single destination (string)
+# or to multiple destinations (array of strings).
+
 # Binaries
 "bin" = "bin"
 
@@ -51,6 +54,9 @@ backup = "$HOME/.dotfiles~"
 "git/commit_template" = ".gitcommit"
 "git/config" = ".gitconfig"
 "git/excludes" = ".gitexcludes"
+
+# Same source linked to several destinations:
+"editorconfig" = [".editorconfig", "projects/.editorconfig"]
 
 "i3" = ".i3"
 ".keynavrc" = ".keynavrc"

@@ -11,6 +11,7 @@
         "zsh/zshrc": ".zshrc",
         "zsh/zshrc.d": ".zshrc.d",
         "zsh/zlogin": ".zlogin",
-        "vim/vimrc": ".vimrc"
+        "vim/vimrc": ".vimrc",
+        "editorconfig": [".editorconfig", "projects/.editorconfig"]
     }
 }
