@@ -53,48 +53,40 @@ func (app *App) Run(args map[string]any) {
 	app.logger.DebugContext(ctx, "Start")
 	app.logger.DebugContext(ctx, "Arguments passed", slog.Any("args", args))
 
-	// Process profiles
-	profilePaths := app.getProfilePaths(ctx, args["--config"])
-
-	for _, profilePath := range profilePaths {
-		app.logger.DebugContext(ctx, "Loading profile", slog.String("path", profilePath))
-		var err error
-		app.profile, err = NewProfile(profilePath)
-		if err != nil {
+	if args["add"].(bool) {
+		profilePath := app.getCurrentProfilePath(ctx, args["--config"])
+		if err := app.loadProfile(ctx, profilePath); err != nil {
 			app.logger.ErrorContext(ctx, "Cannot read profile", slog.String("path", profilePath), slog.Any("error", err))
 			app.logger.InfoContext(ctx, "Maybe you have renamed your profile file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
 			app.exit(1)
 		}
 
-		// Preparations
-		err = os.MkdirAll(app.profile.BackupDir(), 0700)
-		if err != nil && !os.IsExist(err) {
-			app.logger.ErrorContext(ctx, "Error creating backup directory", slog.Any("error", err))
+		filename := args["<filename>"].(string)
+		if err := app.addAction(ctx, filename); err != nil {
+			app.logger.ErrorContext(ctx, "Add action failed", slog.Any("error", err))
 			app.exit(1)
 		}
 
-		app.logger.DebugContext(ctx, "Profile directories",
-			slog.String("dotfiles", app.profile.DotfilesDir()),
-			slog.String("sources", app.profile.SourcesDir()),
-			slog.String("destination", app.profile.DestinationDir()),
-			slog.String("backup", app.profile.BackupDir()))
+		app.logger.InfoContext(ctx, "File was successfully added to your dotfiles!", slog.String("path", filename))
+		app.logger.InfoContext(ctx, "All done (─‿‿─)")
+		app.exit(0)
+	}
+
+	// Process profiles
+	profilePaths := app.getProfilePaths(ctx, args["--config"])
+
+	for _, profilePath := range profilePaths {
+		if err := app.loadProfile(ctx, profilePath); err != nil {
+			app.logger.ErrorContext(ctx, "Cannot read profile", slog.String("path", profilePath), slog.Any("error", err))
+			app.logger.InfoContext(ctx, "Maybe you have renamed your profile file?\nIf so, run dotbro with '--config' argument (see 'dotbro --help' for details).", slog.String("tip", "TIP"))
+			app.exit(1)
+		}
 
 		// Select action
 		switch {
-		case args["add"]:
-			// TODO: add support for multiple configs
-			filename := args["<filename>"].(string)
-			if err = app.addAction(ctx, filename); err != nil {
-				app.logger.ErrorContext(ctx, "Add action failed", slog.Any("error", err))
-				app.exit(1)
-			}
-
-			app.logger.InfoContext(ctx, "File was successfully added to your dotfiles!", slog.String("path", filename))
-			app.logger.InfoContext(ctx, "All done (─‿‿─)")
-			app.exit(0)
 		case args["clean"]:
 			// TODO: add support for multiple configs
-			if err = app.cleanAction(ctx); err != nil {
+			if err := app.cleanAction(ctx); err != nil {
 				app.logger.ErrorContext(ctx, "Clean action failed", slog.Any("error", err))
 				app.exit(1)
 			}
@@ -104,7 +96,7 @@ func (app *App) Run(args map[string]any) {
 			app.exit(0)
 		default:
 			// Default action: install
-			if err = app.installAction(ctx); err != nil {
+			if err := app.installAction(ctx); err != nil {
 				app.logger.ErrorContext(ctx, "Install action failed", slog.Any("error", err))
 				app.exit(1)
 			}
@@ -113,55 +105,6 @@ func (app *App) Run(args map[string]any) {
 
 	app.logger.InfoContext(ctx, "All done (─‿‿─)")
 	app.exit(0)
-}
-
-func (app *App) addAction(ctx context.Context, filename string) error {
-	fileInfo, err := os.Lstat(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("%s: no such file or directory", filename)
-		}
-		return err
-	}
-
-	if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
-		return fmt.Errorf("Cannot add file %s - it is a symlink", filename)
-	}
-
-	if fileInfo.Mode().IsDir() {
-		return fmt.Errorf("Cannot add dir %s - directories are not supported yet.", filename)
-	}
-
-	app.logger.DebugContext(ctx, "Adding file to dotfiles root",
-		slog.String("src", filename),
-		slog.String("dst", app.profile.DotfilesDir()))
-
-	// backup file
-	backupPath := app.profile.BackupDir() + "/" + path.Base(filename)
-	if err = Copy(osfs, filename, backupPath); err != nil {
-		return fmt.Errorf("Cannot backup file %s: %s", filename, err)
-	}
-	app.logger.InfoContext(ctx, "backup",
-		slog.String("status", "→"),
-		slog.String("src", filename),
-		slog.String("dst", backupPath))
-
-	// Move file to dotfiles root
-	newPath := app.profile.DotfilesDir() + "/" + path.Base(filename)
-	if err = os.Rename(filename, newPath); err != nil {
-		return err
-	}
-
-	linker := NewLinker(osfs, app.logger)
-
-	// Add a symlink to the moved file
-	if err = linker.SetSymlink(newPath, filename); err != nil {
-		return err
-	}
-
-	// TODO: write to config file
-
-	return nil
 }
 
 func (app *App) cleanAction(ctx context.Context) error {
