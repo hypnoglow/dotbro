@@ -197,7 +197,9 @@ mapping entry, and target config file(s).
 You can accept the inferred repository path or type a corrected one. For common
 files, dotbro asks whether to update only the current profile or all profiles in
 this dotfiles repo. If the final repository path contains `@profiles/<profile>`,
-dotbro updates only the current profile.
+dotbro updates only the current profile. New mapping entries are inserted into
+`[mapping]` without reformatting the file: after existing entries for the same
+app, or alphabetically by app name with blank lines between app groups.
 
 Current limitations:
 

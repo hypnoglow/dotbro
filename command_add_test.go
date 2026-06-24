@@ -193,8 +193,9 @@ func TestInsertMappingEntry_AfterSameApp(t *testing.T) {
 dotfiles = "/tmp/dotfiles"
 
 [mapping]
-"foo/a.toml" = ".config/foo/a.toml"
 "bar/config.toml" = ".config/bar/config.toml"
+
+"foo/a.toml" = ".config/foo/a.toml"
 "foo/b.toml" = ".config/foo/b.toml"
 
 [files]
@@ -207,7 +208,47 @@ excludes = []
 	assert.Contains(t, got, "\"foo/b.toml\" = \".config/foo/b.toml\"\n\"foo/c.toml\" = \".config/foo/c.toml\"\n\n[files]")
 }
 
-func TestInsertMappingEntry_EndOfMappingSectionWhenAppAbsent(t *testing.T) {
+func TestInsertMappingEntry_AfterSameAppMultilineEntry(t *testing.T) {
+	content := `[mapping]
+"agents/skills/foo" = [
+    ".agents/skills/foo",
+    ".claude/skills/foo",
+]
+
+"bin/tool" = ".local/bin/tool"
+`
+
+	got, err := insertMappingEntry(content, "agents/skills/bar", ".agents/skills/bar")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `"agents/skills/foo" = [
+    ".agents/skills/foo",
+    ".claude/skills/foo",
+]
+"agents/skills/bar" = ".agents/skills/bar"
+
+"bin/tool" = ".local/bin/tool"`)
+}
+
+func TestInsertMappingEntry_AppAbsentAlphabeticalWithBlankLines(t *testing.T) {
+	content := `[mapping]
+
+"agents/skills/foo" = ".agents/skills/foo"
+
+"bin/tool" = ".local/bin/tool"
+
+"ghostty/config" = "Library/Application Support/com.mitchellh.ghostty/config"
+
+"zed/settings.json" = ".config/zed/settings.json"
+`
+
+	got, err := insertMappingEntry(content, "hammerspoon/init.lua", ".hammerspoon/init.lua")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, "\"ghostty/config\" = \"Library/Application Support/com.mitchellh.ghostty/config\"\n\n\"hammerspoon/init.lua\" = \".hammerspoon/init.lua\"\n\n\"zed/settings.json\" = \".config/zed/settings.json\"")
+}
+
+func TestInsertMappingEntry_AppAbsentAlphabeticalAtEnd(t *testing.T) {
 	content := `[mapping]
 "bar/config.toml" = ".config/bar/config.toml"
 
@@ -218,7 +259,7 @@ excludes = []
 	got, err := insertMappingEntry(content, "foo/config.toml", ".config/foo/config.toml")
 
 	require.NoError(t, err)
-	assert.Contains(t, got, "\"bar/config.toml\" = \".config/bar/config.toml\"\n\n\"foo/config.toml\" = \".config/foo/config.toml\"\n[files]")
+	assert.Contains(t, got, "\"bar/config.toml\" = \".config/bar/config.toml\"\n\n\"foo/config.toml\" = \".config/foo/config.toml\"\n\n[files]")
 }
 
 func TestInsertMappingEntry_MissingMappingSection(t *testing.T) {

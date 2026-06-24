@@ -593,24 +593,98 @@ func insertMappingEntry(content, source, dest string) (string, error) {
 	}
 
 	app := appNameFromRepoPath(source)
-	insertIndex := sectionEnd
-	for i := sectionStart + 1; i < sectionEnd; i++ {
-		key, ok := mappingEntryKey(lines[i])
-		if !ok {
-			continue
-		}
-		if appNameFromRepoPath(key) == app {
-			insertIndex = i + 1
-		}
-	}
-
+	entries := mappingEntryLocations(lines, sectionStart, sectionEnd)
+	insertIndex, sameApp := mappingEntryInsertIndex(lines, entries, app, sectionStart, sectionEnd)
 	entry := fmt.Sprintf("%s = %s\n", quoteTOMLString(source), quoteTOMLString(dest))
+	block := mappingEntryBlock(lines, insertIndex, sectionStart, entry, sameApp)
+
 	before := strings.Join(lines[:insertIndex], "")
 	after := strings.Join(lines[insertIndex:], "")
 	if before != "" && !strings.HasSuffix(before, "\n") {
 		before += "\n"
 	}
-	return before + entry + after, nil
+	return before + block + after, nil
+}
+
+type mappingEntryLocation struct {
+	key   string
+	app   string
+	start int
+	end   int
+}
+
+func mappingEntryLocations(lines []string, sectionStart, sectionEnd int) []mappingEntryLocation {
+	starts := make([]mappingEntryLocation, 0)
+	for i := sectionStart + 1; i < sectionEnd; i++ {
+		key, ok := mappingEntryKey(lines[i])
+		if !ok {
+			continue
+		}
+		starts = append(starts, mappingEntryLocation{
+			key:   key,
+			app:   appNameFromRepoPath(key),
+			start: i,
+		})
+	}
+
+	for i := range starts {
+		limit := sectionEnd
+		if i+1 < len(starts) {
+			limit = starts[i+1].start
+		}
+		starts[i].end = trimTrailingBlankLines(lines, starts[i].start+1, limit)
+	}
+
+	return starts
+}
+
+func mappingEntryInsertIndex(lines []string, entries []mappingEntryLocation, app string, sectionStart, sectionEnd int) (int, bool) {
+	insertIndex := sectionEnd
+	for _, entry := range entries {
+		if entry.app == app {
+			insertIndex = entry.end
+		}
+	}
+	if insertIndex != sectionEnd {
+		return insertIndex, true
+	}
+
+	for _, entry := range entries {
+		if strings.Compare(entry.app, app) > 0 {
+			return entry.start, false
+		}
+	}
+
+	if len(entries) == 0 {
+		return sectionEnd, false
+	}
+	return trimTrailingBlankLines(lines, sectionStart+1, sectionEnd), false
+}
+
+func mappingEntryBlock(lines []string, insertIndex, sectionStart int, entry string, sameApp bool) string {
+	if sameApp {
+		return entry
+	}
+
+	block := entry
+	if insertIndex > sectionStart+1 && !isBlankLine(lines[insertIndex-1]) {
+		block = "\n" + block
+	}
+	if insertIndex == len(lines) || !isBlankLine(lines[insertIndex]) {
+		block += "\n"
+	}
+	return block
+}
+
+func trimTrailingBlankLines(lines []string, start, end int) int {
+	for end > start && isBlankLine(lines[end-1]) {
+		end--
+	}
+	return end
+}
+
+func isBlankLine(line string) bool {
+	return strings.TrimSpace(line) == ""
 }
 
 func mappingEntryKey(line string) (string, bool) {
