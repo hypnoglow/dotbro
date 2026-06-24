@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -101,6 +102,57 @@ func TestProfileAwareAppDetection(t *testing.T) {
 func TestMakeProfileSpecificRepoPath(t *testing.T) {
 	assert.Equal(t, "claude/@profiles/acrux/hooks/new.sh", makeProfileSpecificRepoPath("claude/hooks/new.sh", "acrux"))
 	assert.Equal(t, "claude/@profiles/acrux/hooks/new.sh", makeProfileSpecificRepoPath("claude/@profiles/antares/hooks/new.sh", "acrux"))
+}
+
+func TestCurrentProfileSelection_MultipleReposForHost(t *testing.T) {
+	dir := t.TempDir()
+	repo1 := filepath.Join(dir, "dotfiles")
+	repo2 := filepath.Join(dir, "dotfiles-shared")
+	profile1 := writeCurrentProfileSelectionTestProfile(t, repo1, "acrux")
+	profile2 := writeCurrentProfileSelectionTestProfile(t, repo2, "acrux")
+	otherHostProfile := writeCurrentProfileSelectionTestProfile(t, filepath.Join(dir, "other"), "antares")
+
+	candidates := currentProfileCandidatesForHost([]string{profile1, profile2, otherHostProfile}, "acrux")
+
+	require.Len(t, candidates, 2)
+	assert.Equal(t, profile1, candidates[0].Path)
+	assert.Equal(t, repo1, candidates[0].DotfilesDir)
+	assert.Equal(t, profile2, candidates[1].Path)
+	assert.Equal(t, repo2, candidates[1].DotfilesDir)
+
+	var out bytes.Buffer
+	selected, err := promptSelectCurrentProfile(bytes.NewBufferString("2\n"), &out, candidates, "acrux")
+
+	require.NoError(t, err)
+	assert.Equal(t, profile2, selected)
+	assert.Contains(t, out.String(), "Multiple dotfiles repositories match current hostname")
+	assert.Contains(t, out.String(), "dotfiles-shared")
+}
+
+func TestCurrentProfileSelection_DeduplicatesSameRepo(t *testing.T) {
+	dir := t.TempDir()
+	repo := filepath.Join(dir, "dotfiles")
+	profile := writeCurrentProfileSelectionTestProfile(t, repo, "acrux")
+
+	candidates := currentProfileCandidatesForHost([]string{profile, profile}, "acrux")
+
+	require.Len(t, candidates, 1)
+	assert.Equal(t, profile, candidates[0].Path)
+}
+
+func writeCurrentProfileSelectionTestProfile(t *testing.T, dotfilesDir, host string) string {
+	t.Helper()
+	profilePath := filepath.Join(dotfilesDir, "dotbro", "@profiles", host, "dotbro.toml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(profilePath), 0700))
+	content := fmt.Sprintf(`[directories]
+dotfiles = %q
+destination = %q
+backup = %q
+
+[mapping]
+`, dotfilesDir, t.TempDir(), t.TempDir())
+	require.NoError(t, os.WriteFile(profilePath, []byte(content), 0600))
+	return profilePath
 }
 
 func TestApproveAddPlan_ConfigScope(t *testing.T) {

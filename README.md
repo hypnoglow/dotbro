@@ -188,9 +188,11 @@ To move an existing file into your dotfiles repository, run:
 
     dotbro add ~/.config/foo/config.toml
 
-`dotbro add` is interactive. Before changing anything it prints a plan with the
-input path, destination-relative path, inferred app, final repository path,
-backup path, symlink destination, mapping entry, and target config file(s).
+`dotbro add` is interactive. If several configured dotfiles repositories have a
+profile for the current host, dotbro first asks which repository to use. Before
+changing anything it prints a plan with the input path, destination-relative
+path, inferred app, final repository path, backup path, symlink destination,
+mapping entry, and target config file(s).
 
 You can accept the inferred repository path or type a corrected one. For common
 files, dotbro asks whether to update only the current profile or all profiles in

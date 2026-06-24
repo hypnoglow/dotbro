@@ -50,6 +50,11 @@ type addInference struct {
 	SourceRel string
 }
 
+type currentProfileCandidate struct {
+	Path        string
+	DotfilesDir string
+}
+
 func (app *App) addAction(ctx context.Context, filename string) error {
 	if !isInteractiveTerminal(os.Stdin) {
 		return errors.New("dotbro add requires an interactive terminal")
@@ -199,14 +204,30 @@ func (app *App) getCurrentProfilePath(ctx context.Context, profileArg any) strin
 		app.exit(1)
 	}
 
-	if profilePath, ok := findCurrentProfileForHost(cfg.GetProfilePaths(), host); ok {
-		app.logger.DebugContext(ctx, "Using current profile inferred from hostname", slog.String("host", host), slog.String("path", profilePath))
+	candidates := currentProfileCandidatesForHost(cfg.GetProfilePaths(), host)
+	switch len(candidates) {
+	case 0:
+		app.logger.ErrorContext(ctx, "Cannot infer current profile from hostname", slog.String("host", host))
+		app.logger.InfoContext(ctx, "Pass --config to select a dotbro profile explicitly.", slog.String("tip", "TIP"))
+		app.exit(1)
+	case 1:
+		app.logger.DebugContext(ctx, "Using current profile inferred from hostname", slog.String("host", host), slog.String("path", candidates[0].Path))
+		return candidates[0].Path
+	default:
+		if !isInteractiveTerminal(os.Stdin) {
+			app.logger.ErrorContext(ctx, "Multiple dotfiles repositories match current hostname", slog.String("host", host))
+			app.logger.InfoContext(ctx, "Pass --config to select a dotbro profile explicitly.", slog.String("tip", "TIP"))
+			app.exit(1)
+		}
+		profilePath, err := promptSelectCurrentProfile(os.Stdin, os.Stdout, candidates, host)
+		if err != nil {
+			app.logger.ErrorContext(ctx, "Cannot select current profile", slog.Any("error", err))
+			app.exit(1)
+		}
+		app.logger.DebugContext(ctx, "Using current profile selected interactively", slog.String("host", host), slog.String("path", profilePath))
 		return profilePath
 	}
 
-	app.logger.ErrorContext(ctx, "Cannot infer current profile from hostname", slog.String("host", host))
-	app.logger.InfoContext(ctx, "Pass --config to select a dotbro profile explicitly.", slog.String("tip", "TIP"))
-	app.exit(1)
 	return ""
 }
 
@@ -653,14 +674,97 @@ func currentLocalHostName() (string, error) {
 	return host, nil
 }
 
-func findCurrentProfileForHost(profilePaths []string, host string) (string, bool) {
+func currentProfileCandidatesForHost(profilePaths []string, host string) []currentProfileCandidate {
+	candidates := make([]currentProfileCandidate, 0, len(profilePaths))
+	seenPaths := make(map[string]struct{}, len(profilePaths))
+	seenRepos := make(map[string]struct{}, len(profilePaths))
+
+	for _, profilePath := range profilePaths {
+		cleanPath := filepath.Clean(profilePath)
+		if _, ok := seenPaths[cleanPath]; ok {
+			continue
+		}
+		seenPaths[cleanPath] = struct{}{}
+
+		if !profilePathMatchesHost(cleanPath, host) {
+			continue
+		}
+
+		dotfilesDir := profileDotfilesDirForChoice(cleanPath)
+		repoKey := filepath.Clean(dotfilesDir)
+		if _, ok := seenRepos[repoKey]; ok {
+			continue
+		}
+		seenRepos[repoKey] = struct{}{}
+
+		candidates = append(candidates, currentProfileCandidate{
+			Path:        cleanPath,
+			DotfilesDir: dotfilesDir,
+		})
+	}
+
+	return candidates
+}
+
+func profilePathMatchesHost(profilePath, host string) bool {
 	needle := filepath.ToSlash(filepath.Join(profileMarker, host, "dotbro.toml"))
-	for _, p := range profilePaths {
-		if strings.Contains(filepath.ToSlash(filepath.Clean(p)), needle) {
-			return p, true
+	return strings.Contains(filepath.ToSlash(filepath.Clean(profilePath)), needle)
+}
+
+func profileDotfilesDirForChoice(profilePath string) string {
+	profile, err := NewProfile(profilePath)
+	if err == nil {
+		return profile.DotfilesDir()
+	}
+
+	if root, ok := dotfilesRootFromProfilePath(profilePath); ok {
+		return root
+	}
+
+	return filepath.Dir(profilePath)
+}
+
+func dotfilesRootFromProfilePath(profilePath string) (string, bool) {
+	parts := splitSlash(filepath.ToSlash(filepath.Clean(profilePath)))
+	for i := 0; i+3 < len(parts); i++ {
+		if parts[i] == "dotbro" && parts[i+1] == profileMarker && parts[i+3] == "dotbro.toml" {
+			root := strings.Join(parts[:i], "/")
+			if root == "" {
+				root = "."
+			}
+			return filepath.Clean(filepath.FromSlash(root)), true
 		}
 	}
 	return "", false
+}
+
+func promptSelectCurrentProfile(in io.Reader, out io.Writer, candidates []currentProfileCandidate, host string) (string, error) {
+	fmt.Fprintf(out, "Multiple dotfiles repositories match current hostname %q.\n", host)
+	fmt.Fprintln(out, "Choose where to add the file:")
+	for i, candidate := range candidates {
+		name := filepath.Base(candidate.DotfilesDir)
+		fmt.Fprintf(out, "  %d) %s\n", i+1, name)
+		fmt.Fprintf(out, "     dotfiles: %s\n", candidate.DotfilesDir)
+		fmt.Fprintf(out, "     profile:  %s\n", candidate.Path)
+	}
+	fmt.Fprintf(out, "Select dotfiles repository [1-%d]: ", len(candidates))
+
+	reader := bufio.NewReader(in)
+	line, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return "", errors.New("selection is required")
+	}
+
+	choice, err := strconv.Atoi(line)
+	if err != nil || choice < 1 || choice > len(candidates) {
+		return "", fmt.Errorf("invalid selection %q", line)
+	}
+
+	return candidates[choice-1].Path, nil
 }
 
 func cleanSlash(p string) string {
