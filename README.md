@@ -62,9 +62,15 @@ Dotbro cleans broken symlinks in your destination path (`$HOME` by default).
 
 ### `add` command
 
-Dotbro can automate routine of adding files to your dotfiles repo with one single
-command. It does a backup copy, moves the file and creates a symlink to your file.
-After that you only need to add this file to your dotbro profile (*I'm working on automation of this*) and commit that file to your repo.
+Dotbro can automate the routine of adding an existing file to your dotfiles repo.
+The command infers where the file should live in the repository, shows an
+interactive plan, lets you correct the repository path, then backs up the
+original file, moves it into the repo, creates a symlink back to the original
+location, and updates `[mapping]` in `dotbro.toml`.
+
+The first implementation is intentionally conservative: it supports regular
+files, TOML profiles with an existing `[mapping]` section, and interactive
+terminal usage.
 
 ## Installation
 
@@ -176,9 +182,32 @@ So just run:
 
     dotbro
 
-To move a file to your dotfiles, perform an `add` command:
+### Adding a file
 
-    dotbro add ./path-to-file
+To move an existing file into your dotfiles repository, run:
+
+    dotbro add ~/.config/foo/config.toml
+
+`dotbro add` is interactive. If several configured dotfiles repositories have a
+profile for the current host, dotbro first asks which repository to use. Before
+changing anything it prints a plan with the input path, destination-relative
+path, inferred app, final repository path, backup path, symlink destination,
+mapping entry, and target config file(s).
+
+You can accept the inferred repository path or type a corrected one. For common
+files, dotbro asks whether to update only the current profile or all profiles in
+this dotfiles repo. If the final repository path contains `@profiles/<profile>`,
+dotbro updates only the current profile. New mapping entries are inserted into
+`[mapping]` without reformatting the file: after existing entries for the same
+app, or alphabetically by app name with blank lines between app groups.
+
+Current limitations:
+
+- only regular files are supported;
+- directories and symlinks are rejected;
+- automatic config editing supports TOML profiles only;
+- the target profile must already contain a `[mapping]` section;
+- non-interactive usage is rejected.
 
 ## Issues
 
